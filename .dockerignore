@@ -1,0 +1,10 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+.git/
+.env
+service_account.json
+catalogo/
+data/
+.DS_Store

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Catálogo — Biblioteca Personal{% endblock %}
+{% block content %}
+{% if request.query_params.get('msg') == 'subido' %}
+<p class="banner">Libro subido y publicado en el catálogo.</p>
+{% endif %}
+<form class="filters" method="get" action="/">
+  <input type="text" name="q" placeholder="Buscar por título o autor" value="{{ q }}">
+  <select name="categoria">
+    <option value="">Todas las categorías</option>
+    {% for c in categorias %}
+    <option value="{{ c }}" {% if c == categoria_sel %}selected{% endif %}>{{ c }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit">Filtrar</button>
+</form>
+
+<p class="result-count">{{ libros|length }} libro(s)</p>
+
+<table class="book-table">
+  <thead>
+    <tr>
+      <th>Título</th>
+      <th>Autor</th>
+      <th>Categoría</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for libro in libros %}
+    <tr>
+      <td>
+        {{ libro.nuevo_titulo }}
+        {% if libro.privado %}<span class="tag-privado">privado</span>{% endif %}
+      </td>
+      <td>{{ libro.autor }}</td>
+      <td>{{ libro.categoria }}</td>
+      <td><a class="button-small" href="/descargar/{{ libro.id }}">Descargar</a></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="4">No se encontraron libros.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Panel — Biblioteca Personal{% endblock %}
+{% block content %}
+<h1>Panel de administración</h1>
+
+<section>
+  <h2>Pendientes de aprobación ({{ pendientes|length }})</h2>
+  {% for p in pendientes %}
+  <div class="pending-card">
+    <p class="pending-meta">
+      Subido por <strong>{{ p.uploader_email }}</strong> el {{ p.created_at.strftime('%Y-%m-%d %H:%M') }} —
+      <a href="/panel/{{ p.id }}/archivo" target="_blank">ver/descargar archivo original</a>
+      ({{ p.titulo_original }}{{ p.extension }})
+    </p>
+    <form method="post" action="/panel/{{ p.id }}/aprobar" class="pending-form">
+      <label>Título
+        <input type="text" name="nuevo_titulo" value="{{ p.nuevo_titulo }}" required>
+      </label>
+      <label>Autor
+        <input type="text" name="autor" value="{{ p.autor }}" required>
+      </label>
+      <label>Categoría
+        <select name="categoria" required>
+          {% for c in categorias %}
+          <option value="{{ c }}" {% if c == p.categoria %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" name="privado" {% if p.privado %}checked{% endif %}>
+        Privado
+      </label>
+      <label>Comentarios
+        <textarea name="comentarios" rows="2">{{ p.comentarios }}</textarea>
+      </label>
+      <div class="pending-actions">
+        <button type="submit" class="button">Aprobar y publicar</button>
+      </div>
+    </form>
+    <form method="post" action="/panel/{{ p.id }}/rechazar" class="pending-form reject-form">
+      <input type="text" name="motivo" placeholder="Motivo del rechazo (opcional)">
+      <button type="submit" class="button-danger">Rechazar</button>
+    </form>
+  </div>
+  {% else %}
+  <p class="result-count">No hay libros pendientes.</p>
+  {% endfor %}
+</section>
+
+<section>
+  <h2>Personas autorizadas</h2>
+  <table class="book-table">
+    <thead><tr><th>Email</th><th>Rol</th><th>Estado</th><th></th></tr></thead>
+    <tbody>
+      {% for u in usuarios %}
+      <tr>
+        <td>{{ u.email }}</td>
+        <td>{{ u.role }}</td>
+        <td>{{ "activo" if u.active else "desactivado" }}</td>
+        <td>
+          {% if u.role != 'owner' %}
+          {% if u.active %}
+          <form method="post" action="/panel/usuarios/{{ u.email }}/desactivar">
+            <button type="submit" class="button-small">Desactivar</button>
+          </form>
+          {% else %}
+          <form method="post" action="/panel/usuarios/{{ u.email }}/reactivar">
+            <button type="submit" class="button-small">Reactivar</button>
+          </form>
+          {% endif %}
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <form method="post" action="/panel/usuarios/agregar" class="inline-form">
+    <input type="email" name="email" placeholder="email@ejemplo.com" required>
+    <input type="text" name="display_name" placeholder="Nombre (opcional)">
+    <button type="submit" class="button-small">Agregar amigo</button>
+  </form>
+</section>
+
+<section>
+  <h2>Categorías</h2>
+  <p>{{ categorias|join(", ") }}</p>
+  <form method="post" action="/panel/categorias/agregar" class="inline-form">
+    <input type="text" name="nombre" placeholder="Nueva categoría" required>
+    <button type="submit" class="button-small">Agregar categoría</button>
+  </form>
+</section>
+{% endblock %}

@@ -1,0 +1,11 @@
+service_account.json
+*.json
+!package.json
+catalogo/
+data/
+.DS_Store
+.env
+__pycache__/
+*.pyc
+venv/
+.venv/

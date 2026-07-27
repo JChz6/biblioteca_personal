@@ -1,0 +1,183 @@
+:root {
+  color-scheme: light dark;
+  --fg: #1a1a1a;
+  --bg: #ffffff;
+  --muted: #666666;
+  --border: #dddddd;
+  --accent: #2f5fa3;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fg: #e8e8e8;
+    --bg: #121212;
+    --muted: #999999;
+    --border: #333333;
+    --accent: #6ea0e0;
+  }
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: -apple-system, system-ui, sans-serif;
+  color: var(--fg);
+  background: var(--bg);
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+.brand { font-weight: 700; text-decoration: none; color: var(--fg); font-size: 1.1rem; }
+.topbar nav { display: flex; align-items: center; gap: 1rem; }
+.user-email { color: var(--muted); font-size: 0.9rem; }
+.topbar a { color: var(--accent); text-decoration: none; }
+
+.container { max-width: 960px; margin: 0 auto; padding: 1.5rem; }
+
+.login-box { max-width: 360px; margin: 4rem auto; text-align: center; }
+.button, .button-small {
+  display: inline-block;
+  padding: 0.6rem 1.2rem;
+  background: var(--accent);
+  color: white;
+  border-radius: 6px;
+  text-decoration: none;
+  margin-top: 1rem;
+}
+.button-small { padding: 0.3rem 0.7rem; font-size: 0.85rem; margin: 0; }
+
+.filters { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.filters input, .filters select, .filters button {
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+}
+.filters input { flex: 1; min-width: 200px; }
+
+.result-count { color: var(--muted); font-size: 0.9rem; }
+
+.book-table { width: 100%; border-collapse: collapse; }
+.book-table th, .book-table td {
+  text-align: left;
+  padding: 0.6rem 0.4rem;
+  border-bottom: 1px solid var(--border);
+}
+.tag-privado {
+  font-size: 0.7rem;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.1rem 0.4rem;
+  margin-left: 0.4rem;
+}
+
+.banner {
+  background: color-mix(in srgb, var(--accent) 15%, var(--bg));
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 0.6rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.upload-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 480px;
+}
+.upload-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.upload-form input, .upload-form select, .upload-form textarea {
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+}
+.checkbox-label {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.5rem !important;
+}
+.upload-form button {
+  align-self: flex-start;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+}
+
+section { margin-bottom: 2.5rem; }
+section h2 { font-size: 1.1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.4rem; }
+
+.pending-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+.pending-meta { color: var(--muted); font-size: 0.85rem; margin-top: 0; }
+.pending-meta a { color: var(--accent); }
+.pending-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+.pending-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.pending-form input, .pending-form select, .pending-form textarea {
+  padding: 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+}
+.pending-actions { margin-left: auto; }
+.reject-form { margin-top: 0.5rem; }
+.reject-form input { min-width: 240px; }
+
+.button, .button-small, .button-danger {
+  border: none;
+  cursor: pointer;
+}
+.button-danger {
+  display: inline-block;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.85rem;
+  background: transparent;
+  color: #c0392b;
+  border: 1px solid #c0392b !important;
+  border-radius: 6px;
+}
+
+.inline-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  flex-wrap: wrap;
+}
+.inline-form input {
+  padding: 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+}

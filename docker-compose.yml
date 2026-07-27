@@ -1,0 +1,31 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/service_account.json
+      - DATABASE_URL=sqlite:////data/app.db
+      - PENDING_DIR=/data/pending
+    volumes:
+      - biblioteca_data:/data
+      - ./service_account.json:/app/service_account.json:ro
+    networks:
+      - biblioteca_net
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel run
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - app
+    networks:
+      - biblioteca_net
+
+volumes:
+  biblioteca_data:
+
+networks:
+  biblioteca_net:

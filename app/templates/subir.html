@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Subir libro — Biblioteca Personal{% endblock %}
+{% block content %}
+<h1>Subir un libro</h1>
+
+{% if request.query_params.get('msg') == 'pendiente' %}
+<p class="banner">Tu libro quedó pendiente de aprobación. El dueño lo revisará pronto.</p>
+{% endif %}
+
+<form method="post" action="/subir" enctype="multipart/form-data" class="upload-form">
+  <label>Archivo
+    <input type="file" name="archivo" required>
+  </label>
+  <label>Título
+    <input type="text" name="nuevo_titulo" required>
+  </label>
+  <label>Autor
+    <input type="text" name="autor" required>
+  </label>
+  <label>Categoría
+    <select name="categoria" required>
+      <option value="" disabled selected>Elige una categoría</option>
+      {% for c in categorias %}
+      <option value="{{ c }}">{{ c }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label class="checkbox-label">
+    <input type="checkbox" name="privado">
+    Privado (solo tú lo puedes ver/descargar)
+  </label>
+  <label>Comentarios (opcional)
+    <textarea name="comentarios" rows="3"></textarea>
+  </label>
+  <button type="submit" class="button">
+    {% if user.role == 'owner' %}Subir y publicar{% else %}Enviar para aprobación{% endif %}
+  </button>
+</form>
+{% endblock %}
