@@ -1,15 +1,14 @@
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import FileResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import require_owner
 from app.db.models import Categoria, PendingUpload, User
 from app.db.session import get_db
 from app.services.approval import aprobar_pending, rechazar_pending
+from app.templating import templates
 
 router = APIRouter()
-templates = Jinja2Templates(directory="app/templates")
 
 
 @router.get("/panel/{pending_id}/archivo")

@@ -1,16 +1,15 @@
 import math
 
 from fastapi import APIRouter, Depends, Request
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import require_login
 from app.bigquery.catalogo import agrupar_por_obra, listar_catalogo
 from app.db.models import Categoria, User
 from app.db.session import get_db
+from app.templating import templates
 
 router = APIRouter()
-templates = Jinja2Templates(directory="app/templates")
 
 PAGE_SIZE = 24
 

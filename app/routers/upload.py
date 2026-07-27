@@ -3,7 +3,6 @@ import shutil
 
 from fastapi import APIRouter, Depends, Form, Request, UploadFile
 from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import require_login
@@ -11,9 +10,9 @@ from app.config import get_settings
 from app.db.models import Categoria, PendingUpload, User
 from app.db.session import get_db
 from app.services.approval import aprobar_pending
+from app.templating import templates
 
 router = APIRouter()
-templates = Jinja2Templates(directory="app/templates")
 
 
 @router.get("/subir")

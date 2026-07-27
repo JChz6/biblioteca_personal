@@ -1,7 +1,6 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.auth.dependencies import NotAuthenticated, NotAuthorized
@@ -15,8 +14,6 @@ settings = get_settings()
 app = FastAPI(title="Biblioteca Personal")
 app.add_middleware(SessionMiddleware, secret_key=settings.session_secret_key)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
-
-templates = Jinja2Templates(directory="app/templates")
 
 
 @app.on_event("startup")

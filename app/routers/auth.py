@@ -1,14 +1,13 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 
 from app.auth.oauth import oauth
 from app.config import get_settings
 from app.db.models import User
 from app.db.session import SessionLocal
+from app.templating import templates
 
 router = APIRouter()
-templates = Jinja2Templates(directory="app/templates")
 
 
 @router.get("/login")
