@@ -12,7 +12,7 @@ templates = Jinja2Templates(directory="app/templates")
 
 
 @router.get("/")
-async def catalog_view(
+def catalog_view(
     request: Request,
     q: str | None = None,
     categoria: str | None = None,

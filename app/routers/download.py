@@ -19,7 +19,7 @@ def _content_disposition(nombre_archivo: str) -> str:
 
 
 @router.get("/descargar/{book_id}")
-async def descargar(book_id: str, user: User = Depends(require_login)):
+def descargar(book_id: str, user: User = Depends(require_login)):
     incluir_privados = user.role == "owner"
     libro = get_by_id(book_id, incluir_privados=incluir_privados)
     if libro is None or not libro.get("uri_gcs"):
