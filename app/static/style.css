@@ -313,6 +313,8 @@ a { color: var(--neon-cyan); }
 .badge-pendiente { color: var(--neon-amber); background: rgba(255, 204, 51, 0.1); border: 1px solid rgba(255, 204, 51, 0.35); }
 .badge-aprobado { color: var(--neon-green); background: rgba(57, 255, 136, 0.1); border: 1px solid rgba(57, 255, 136, 0.35); }
 
+.format-group { display: inline-flex; gap: 0.4rem; flex-wrap: wrap; }
+
 .result-count { color: var(--text-muted); font-size: 0.85rem; margin: 0 0 0.9rem; }
 .banner {
   background: rgba(57, 255, 136, 0.08);

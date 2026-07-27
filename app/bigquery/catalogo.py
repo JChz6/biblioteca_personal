@@ -90,6 +90,41 @@ def listar_catalogo(
     return sorted(rows, key=lambda r: (r.get("nuevo_titulo") or "").lower())
 
 
+def agrupar_por_obra(libros: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """
+    Agrupa filas que son el mismo libro en distintos formatos (ej. PDF + EPUB) —
+    mismo (nuevo_titulo, autor) — en una sola entrada con varios "formatos"
+    descargables, para que no se vean como duplicados en el catálogo.
+    """
+    grupos: dict[tuple[str, str], dict[str, Any]] = {}
+    orden: list[tuple[str, str]] = []
+    for libro in libros:
+        clave = (
+            (libro.get("nuevo_titulo") or "").strip().lower(),
+            (libro.get("autor") or "").strip().lower(),
+        )
+        if clave not in grupos:
+            grupos[clave] = {
+                "nuevo_titulo": libro.get("nuevo_titulo"),
+                "autor": libro.get("autor"),
+                "categoria": libro.get("categoria"),
+                "privado": False,
+                "formatos": [],
+            }
+            orden.append(clave)
+        grupo = grupos[clave]
+        grupo["privado"] = grupo["privado"] or bool(libro.get("privado"))
+        grupo["formatos"].append({
+            "id": libro["id"],
+            "extension": (libro.get("extension") or "").lstrip("."),
+        })
+
+    resultado = [grupos[clave] for clave in orden]
+    for grupo in resultado:
+        grupo["formatos"].sort(key=lambda f: f["extension"])
+    return resultado
+
+
 def get_by_id(book_id: str, incluir_privados: bool = False) -> dict[str, Any] | None:
     for row in get_catalogo():
         if row.get("id") == book_id:

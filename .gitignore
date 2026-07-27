@@ -6,6 +6,7 @@ data/
 .DS_Store
 .env
 referencia_ui.jpg
+scripts/backup_titulos_*.json
 __pycache__/
 *.pyc
 venv/

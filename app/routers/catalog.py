@@ -5,7 +5,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import require_login
-from app.bigquery.catalogo import listar_catalogo
+from app.bigquery.catalogo import agrupar_por_obra, listar_catalogo
 from app.db.models import Categoria, User
 from app.db.session import get_db
 
@@ -43,13 +43,14 @@ def catalog_view(
 ):
     incluir_privados = user.role == "owner"
     libros = listar_catalogo(search=q, categoria=categoria or None, incluir_privados=incluir_privados)
+    grupos = agrupar_por_obra(libros)
     categorias = [c.nombre for c in db.query(Categoria).order_by(Categoria.nombre).all()]
 
-    total = len(libros)
+    total = len(grupos)
     total_pages = max(1, math.ceil(total / PAGE_SIZE))
     page = max(1, min(page, total_pages))
     inicio = (page - 1) * PAGE_SIZE
-    libros_pagina = libros[inicio: inicio + PAGE_SIZE]
+    libros_pagina = grupos[inicio: inicio + PAGE_SIZE]
 
     return templates.TemplateResponse(
         request,

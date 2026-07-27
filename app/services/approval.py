@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.bigquery.catalogo import upsert_libro_aprobado
 from app.db.models import PendingUpload
 from app.gcs.storage import construir_urls_gcs, delete_blob, safe_filename, upload_to_gcs
+from app.text_utils import normalizar_titulo
 
 
 def aprobar_pending(db: Session, pending: PendingUpload, aprobado_por: str) -> str:
@@ -13,7 +14,7 @@ def aprobar_pending(db: Session, pending: PendingUpload, aprobado_por: str) -> s
     Sube el archivo en staging a GCS, hace upsert a BigQuery, marca el pending
     como aprobado y borra el archivo local. Devuelve el id del libro aprobado.
     """
-    titulo_format = pending.nuevo_titulo.strip().title()
+    titulo_format = normalizar_titulo(pending.nuevo_titulo)
     autor_format = pending.autor.strip().title()
     titulo_safe = safe_filename(titulo_format)
     autor_safe = safe_filename(autor_format)

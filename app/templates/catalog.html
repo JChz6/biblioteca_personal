@@ -45,7 +45,13 @@
         </td>
         <td class="book-meta">{{ libro.autor }}</td>
         <td class="book-meta">{{ libro.categoria }}</td>
-        <td><a class="button-small" href="/descargar/{{ libro.id }}">Descargar</a></td>
+        <td>
+          <span class="format-group">
+            {% for f in libro.formatos %}
+            <a class="button-small" href="/descargar/{{ f.id }}">{{ f.extension|upper }}</a>
+            {% endfor %}
+          </span>
+        </td>
       </tr>
       {% else %}
       <tr><td colspan="4" class="book-meta">No se encontraron libros.</td></tr>
