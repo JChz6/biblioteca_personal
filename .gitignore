@@ -5,6 +5,7 @@ catalogo/
 data/
 .DS_Store
 .env
+referencia_ui.jpg
 __pycache__/
 *.pyc
 venv/

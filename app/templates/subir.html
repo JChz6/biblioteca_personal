@@ -1,7 +1,14 @@
-{% extends "base.html" %}
+{% extends "base_app.html" %}
 {% block title %}Subir libro — Biblioteca Personal{% endblock %}
 {% block content %}
-<h1>Subir un libro</h1>
+<div class="page-header">
+  <div>
+    <h1>Subir un libro</h1>
+    <p class="page-subtitle">
+      {% if user.role == 'owner' %}Se publica directo en el catálogo.{% else %}Queda pendiente hasta que el dueño lo apruebe.{% endif %}
+    </p>
+  </div>
+</div>
 
 {% if request.query_params.get('msg') == 'pendiente' %}
 <p class="banner">Tu libro quedó pendiente de aprobación. El dueño lo revisará pronto.</p>

@@ -1,9 +1,20 @@
-{% extends "base.html" %}
+{% extends "base_app.html" %}
 {% block title %}Catálogo — Biblioteca Personal{% endblock %}
 {% block content %}
+<div class="page-header">
+  <div>
+    <h1>Catálogo</h1>
+    <p class="page-subtitle">{{ total }} libro{{ "s" if total != 1 else "" }} en tu biblioteca</p>
+  </div>
+  <div class="page-header-actions">
+    <a href="/subir" class="button">+ Subir libro</a>
+  </div>
+</div>
+
 {% if request.query_params.get('msg') == 'subido' %}
 <p class="banner">Libro subido y publicado en el catálogo.</p>
 {% endif %}
+
 <form class="filters" method="get" action="/">
   <input type="text" name="q" placeholder="Buscar por título o autor" value="{{ q }}">
   <select name="categoria">
@@ -12,34 +23,51 @@
     <option value="{{ c }}" {% if c == categoria_sel %}selected{% endif %}>{{ c }}</option>
     {% endfor %}
   </select>
-  <button type="submit">Filtrar</button>
+  <button type="submit" class="button-ghost">Filtrar</button>
 </form>
 
-<p class="result-count">{{ libros|length }} libro(s)</p>
+<div class="table-card">
+  <table class="book-table">
+    <thead>
+      <tr>
+        <th>Título</th>
+        <th>Autor</th>
+        <th>Categoría</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for libro in libros %}
+      <tr>
+        <td>
+          <span class="book-title">{{ libro.nuevo_titulo }}</span>
+          {% if libro.privado %}<span class="badge badge-privado">Privado</span>{% endif %}
+        </td>
+        <td class="book-meta">{{ libro.autor }}</td>
+        <td class="book-meta">{{ libro.categoria }}</td>
+        <td><a class="button-small" href="/descargar/{{ libro.id }}">Descargar</a></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" class="book-meta">No se encontraron libros.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
 
-<table class="book-table">
-  <thead>
-    <tr>
-      <th>Título</th>
-      <th>Autor</th>
-      <th>Categoría</th>
-      <th></th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for libro in libros %}
-    <tr>
-      <td>
-        {{ libro.nuevo_titulo }}
-        {% if libro.privado %}<span class="tag-privado">privado</span>{% endif %}
-      </td>
-      <td>{{ libro.autor }}</td>
-      <td>{{ libro.categoria }}</td>
-      <td><a class="button-small" href="/descargar/{{ libro.id }}">Descargar</a></td>
-    </tr>
-    {% else %}
-    <tr><td colspan="4">No se encontraron libros.</td></tr>
+  {% if total_pages > 1 %}
+  <div class="pagination">
+    {% set base_qs = "q=" ~ q ~ "&categoria=" ~ categoria_sel %}
+    {% if page > 1 %}<a href="/?{{ base_qs }}&page={{ page - 1 }}">‹</a>{% endif %}
+    {% for p in page_window %}
+      {% if p is none %}
+      <span class="ellipsis">…</span>
+      {% elif p == page %}
+      <span class="current">{{ p }}</span>
+      {% else %}
+      <a href="/?{{ base_qs }}&page={{ p }}">{{ p }}</a>
+      {% endif %}
     {% endfor %}
-  </tbody>
-</table>
+    {% if page < total_pages %}<a href="/?{{ base_qs }}&page={{ page + 1 }}">›</a>{% endif %}
+  </div>
+  {% endif %}
+</div>
 {% endblock %}

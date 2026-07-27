@@ -21,7 +21,9 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./data/app.db"
     pending_dir: str = "./data/pending"
 
-    catalog_cache_ttl_seconds: int = 90
+    # El catálogo se invalida explícitamente al aprobar un libro (ver invalidate_cache()),
+    # así que este TTL es solo una red de seguridad — puede ser largo sin afectar frescura.
+    catalog_cache_ttl_seconds: int = 3600
 
 
 @lru_cache

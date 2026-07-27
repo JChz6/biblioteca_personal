@@ -7,19 +7,6 @@
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  <header class="topbar">
-    <a class="brand" href="/">Biblioteca Personal</a>
-    {% if user %}
-    <nav>
-      <a href="/subir">Subir</a>
-      {% if user.role == 'owner' %}<a href="/panel">Panel</a>{% endif %}
-      <span class="user-email">{{ user.email }}</span>
-      <a href="/logout">Salir</a>
-    </nav>
-    {% endif %}
-  </header>
-  <main class="container">
-    {% block content %}{% endblock %}
-  </main>
+  {% block body %}{% endblock %}
 </body>
 </html>

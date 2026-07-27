@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-mark mono">B</span>
+      <div>
+        <div class="brand-name">Biblioteca</div>
+        <div class="brand-sub">Personal</div>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="/" class="{{ 'active' if request.url.path == '/' else '' }}">Catálogo</a>
+      <a href="/subir" class="{{ 'active' if request.url.path == '/subir' else '' }}">Subir</a>
+      {% if user.role == 'owner' %}
+      <a href="/panel" class="{{ 'active' if request.url.path == '/panel' else '' }}">Panel</a>
+      {% endif %}
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <span class="user-avatar">{{ user.email[0]|upper }}</span>
+        <div>
+          <div class="user-email">{{ user.email }}</div>
+          <div class="user-role">{{ user.role }}</div>
+        </div>
+      </div>
+      <a href="/logout" class="logout-link">Cerrar sesión</a>
+    </div>
+  </aside>
+  <div class="main">
+    <div class="main-inner">
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -5,6 +5,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.auth.dependencies import NotAuthenticated, NotAuthorized
+from app.bigquery.catalogo import get_catalogo
 from app.config import get_settings
 from app.db.session import init_db
 from app.routers import admin, auth, catalog, download, upload
@@ -21,6 +22,10 @@ templates = Jinja2Templates(directory="app/templates")
 @app.on_event("startup")
 def on_startup() -> None:
     init_db()
+    try:
+        get_catalogo()  # precalienta el cache para que el primer request no pague la consulta a BigQuery
+    except Exception:
+        pass  # si falla (credenciales aún no listas, etc.) el primer request lo reintenta
 
 
 @app.exception_handler(NotAuthenticated)

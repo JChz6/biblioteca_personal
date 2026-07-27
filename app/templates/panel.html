@@ -1,10 +1,15 @@
-{% extends "base.html" %}
+{% extends "base_app.html" %}
 {% block title %}Panel — Biblioteca Personal{% endblock %}
 {% block content %}
-<h1>Panel de administración</h1>
+<div class="page-header">
+  <div>
+    <h1>Panel de administración</h1>
+    <p class="page-subtitle">Aprobaciones, personas autorizadas y categorías</p>
+  </div>
+</div>
 
 <section>
-  <h2>Pendientes de aprobación ({{ pendientes|length }})</h2>
+  <h2>Pendientes de aprobación <span class="badge badge-pendiente">{{ pendientes|length }}</span></h2>
   {% for p in pendientes %}
   <div class="pending-card">
     <p class="pending-meta">
@@ -49,31 +54,36 @@
 
 <section>
   <h2>Personas autorizadas</h2>
-  <table class="book-table">
-    <thead><tr><th>Email</th><th>Rol</th><th>Estado</th><th></th></tr></thead>
-    <tbody>
-      {% for u in usuarios %}
-      <tr>
-        <td>{{ u.email }}</td>
-        <td>{{ u.role }}</td>
-        <td>{{ "activo" if u.active else "desactivado" }}</td>
-        <td>
-          {% if u.role != 'owner' %}
-          {% if u.active %}
-          <form method="post" action="/panel/usuarios/{{ u.email }}/desactivar">
-            <button type="submit" class="button-small">Desactivar</button>
-          </form>
-          {% else %}
-          <form method="post" action="/panel/usuarios/{{ u.email }}/reactivar">
-            <button type="submit" class="button-small">Reactivar</button>
-          </form>
-          {% endif %}
-          {% endif %}
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <div class="table-card">
+    <table class="book-table">
+      <thead><tr><th>Email</th><th>Rol</th><th>Estado</th><th></th></tr></thead>
+      <tbody>
+        {% for u in usuarios %}
+        <tr>
+          <td>{{ u.email }}</td>
+          <td class="book-meta">{{ u.role }}</td>
+          <td>
+            {% if u.active %}<span class="badge badge-aprobado">Activo</span>
+            {% else %}<span class="badge badge-privado">Desactivado</span>{% endif %}
+          </td>
+          <td>
+            {% if u.role != 'owner' %}
+            {% if u.active %}
+            <form method="post" action="/panel/usuarios/{{ u.email }}/desactivar">
+              <button type="submit" class="button-small">Desactivar</button>
+            </form>
+            {% else %}
+            <form method="post" action="/panel/usuarios/{{ u.email }}/reactivar">
+              <button type="submit" class="button-small">Reactivar</button>
+            </form>
+            {% endif %}
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
   <form method="post" action="/panel/usuarios/agregar" class="inline-form">
     <input type="email" name="email" placeholder="email@ejemplo.com" required>
     <input type="text" name="display_name" placeholder="Nombre (opcional)">
@@ -83,7 +93,7 @@
 
 <section>
   <h2>Categorías</h2>
-  <p>{{ categorias|join(", ") }}</p>
+  <p class="book-meta">{{ categorias|join(", ") }}</p>
   <form method="post" action="/panel/categorias/agregar" class="inline-form">
     <input type="text" name="nombre" placeholder="Nueva categoría" required>
     <button type="submit" class="button-small">Agregar categoría</button>
