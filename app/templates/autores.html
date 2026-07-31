@@ -1,0 +1,33 @@
+{% extends "base_app.html" %}
+{% block title %}Autores — Biblioteca Personal{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Autores</h1>
+    <p class="page-subtitle">{{ autores|length }} autor{{ "es" if autores|length != 1 else "" }} en tu biblioteca</p>
+  </div>
+</div>
+
+<input type="text" id="autor-search" class="entity-search" placeholder="Buscar autor…" aria-label="Buscar autor">
+
+<div class="entity-grid" id="autor-grid">
+  {% for a in autores %}
+  <a class="entity-card" href="/?autor={{ a.nombre|urlencode }}">
+    <span class="entity-name" title="{{ a.nombre }}">{{ a.nombre }}</span>
+    <span class="entity-count">{{ a.total }} libro{{ "s" if a.total != 1 else "" }}</span>
+  </a>
+  {% else %}
+  <p class="entity-empty">No hay autores todavía.</p>
+  {% endfor %}
+</div>
+
+<script>
+document.getElementById('autor-search').addEventListener('input', function () {
+  var term = this.value.trim().toLowerCase();
+  document.querySelectorAll('#autor-grid .entity-card').forEach(function (card) {
+    var match = card.querySelector('.entity-name').textContent.toLowerCase().indexOf(term) !== -1;
+    card.style.display = match ? '' : 'none';
+  });
+});
+</script>
+{% endblock %}

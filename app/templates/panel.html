@@ -55,6 +55,7 @@
 <section>
   <h2>Personas autorizadas</h2>
   <div class="table-card">
+    <div class="table-scroll">
     <table class="book-table">
       <thead><tr><th>Email</th><th>Rol</th><th>Estado</th><th></th></tr></thead>
       <tbody>
@@ -83,6 +84,7 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
   </div>
   <form method="post" action="/panel/usuarios/agregar" class="inline-form">
     <input type="email" name="email" placeholder="email@ejemplo.com" required>

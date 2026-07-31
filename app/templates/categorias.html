@@ -1,0 +1,21 @@
+{% extends "base_app.html" %}
+{% block title %}Categorías — Biblioteca Personal{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Categorías</h1>
+    <p class="page-subtitle">{{ categorias_lista|length }} categoría{{ "s" if categorias_lista|length != 1 else "" }}</p>
+  </div>
+</div>
+
+<div class="entity-grid">
+  {% for c in categorias_lista %}
+  <a class="entity-card" href="/?categoria={{ c.nombre|urlencode }}">
+    <span class="entity-name" title="{{ c.nombre }}">{{ c.nombre }}</span>
+    <span class="entity-count">{{ c.total }} libro{{ "s" if c.total != 1 else "" }}</span>
+  </a>
+  {% else %}
+  <p class="entity-empty">No hay categorías todavía.</p>
+  {% endfor %}
+</div>
+{% endblock %}

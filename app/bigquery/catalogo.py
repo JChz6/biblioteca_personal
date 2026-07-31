@@ -1,5 +1,6 @@
 import time
 import uuid
+from datetime import datetime
 from functools import lru_cache
 from typing import Any
 
@@ -74,6 +75,7 @@ def invalidate_cache() -> None:
 def listar_catalogo(
     search: str | None = None,
     categoria: str | None = None,
+    autor: str | None = None,
     incluir_privados: bool = False,
 ) -> list[dict[str, Any]]:
     rows = get_catalogo()
@@ -81,6 +83,8 @@ def listar_catalogo(
         rows = [r for r in rows if not r.get("privado")]
     if categoria:
         rows = [r for r in rows if r.get("categoria") == categoria]
+    if autor:
+        rows = [r for r in rows if (r.get("autor") or "").strip() == autor]
     if search:
         s = search.lower()
         rows = [
@@ -88,6 +92,32 @@ def listar_catalogo(
             if s in (r.get("nuevo_titulo") or "").lower() or s in (r.get("autor") or "").lower()
         ]
     return sorted(rows, key=lambda r: (r.get("nuevo_titulo") or "").lower())
+
+
+def contar_por_autor(incluir_privados: bool = False) -> dict[str, int]:
+    """Cuenta obras (no filas/formatos) por autor, para la página /autores."""
+    rows = get_catalogo()
+    if not incluir_privados:
+        rows = [r for r in rows if not r.get("privado")]
+    conteo: dict[str, int] = {}
+    for grupo in agrupar_por_obra(rows):
+        autor = (grupo.get("autor") or "").strip()
+        if autor:
+            conteo[autor] = conteo.get(autor, 0) + 1
+    return conteo
+
+
+def contar_por_categoria(incluir_privados: bool = False) -> dict[str, int]:
+    """Cuenta obras (no filas/formatos) por categoría, para la página /categorias."""
+    rows = get_catalogo()
+    if not incluir_privados:
+        rows = [r for r in rows if not r.get("privado")]
+    conteo: dict[str, int] = {}
+    for grupo in agrupar_por_obra(rows):
+        categoria = (grupo.get("categoria") or "").strip()
+        if categoria:
+            conteo[categoria] = conteo.get(categoria, 0) + 1
+    return conteo
 
 
 def agrupar_por_obra(libros: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -109,11 +139,15 @@ def agrupar_por_obra(libros: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "autor": libro.get("autor"),
                 "categoria": libro.get("categoria"),
                 "privado": False,
+                "fecha_carga": None,
                 "formatos": [],
             }
             orden.append(clave)
         grupo = grupos[clave]
         grupo["privado"] = grupo["privado"] or bool(libro.get("privado"))
+        fecha = libro.get("fecha_carga")
+        if fecha is not None and (grupo["fecha_carga"] is None or fecha > grupo["fecha_carga"]):
+            grupo["fecha_carga"] = fecha
         grupo["formatos"].append({
             "id": libro["id"],
             "extension": (libro.get("extension") or "").lstrip("."),
@@ -123,6 +157,17 @@ def agrupar_por_obra(libros: list[dict[str, Any]]) -> list[dict[str, Any]]:
     for grupo in resultado:
         grupo["formatos"].sort(key=lambda f: f["extension"])
     return resultado
+
+
+def ordenar_grupos(grupos: list[dict[str, Any]], orden: str) -> list[dict[str, Any]]:
+    if orden == "autor":
+        return sorted(
+            grupos,
+            key=lambda g: ((g.get("autor") or "").lower(), (g.get("nuevo_titulo") or "").lower()),
+        )
+    if orden == "fecha":
+        return sorted(grupos, key=lambda g: g.get("fecha_carga") or datetime.min, reverse=True)
+    return sorted(grupos, key=lambda g: (g.get("nuevo_titulo") or "").lower())
 
 
 def get_by_id(book_id: str, incluir_privados: bool = False) -> dict[str, Any] | None:

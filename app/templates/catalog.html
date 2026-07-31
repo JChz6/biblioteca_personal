@@ -15,6 +15,10 @@
 <p class="banner">Libro subido y publicado en el catálogo.</p>
 {% endif %}
 
+{% if autor_sel %}
+<p class="filter-chip">Autor: <strong>{{ autor_sel }}</strong> — <a href="/?q={{ q }}&categoria={{ categoria_sel }}&orden={{ orden }}">Quitar filtro</a></p>
+{% endif %}
+
 <form class="filters" method="get" action="/">
   <input type="text" name="q" placeholder="Buscar por título o autor" value="{{ q }}">
   <select name="categoria">
@@ -23,10 +27,20 @@
     <option value="{{ c }}" {% if c == categoria_sel %}selected{% endif %}>{{ c }}</option>
     {% endfor %}
   </select>
+  <input type="hidden" name="orden" value="{{ orden }}">
+  <input type="hidden" name="autor" value="{{ autor_sel }}">
   <button type="submit" class="button-ghost">Filtrar</button>
 </form>
 
+{% set base_qs = "q=" ~ q ~ "&categoria=" ~ categoria_sel ~ "&autor=" ~ autor_sel %}
+<div class="sort-toggle">
+  <a href="/?{{ base_qs }}&orden=titulo" class="{{ 'active' if orden == 'titulo' else '' }}">Título</a>
+  <a href="/?{{ base_qs }}&orden=autor" class="{{ 'active' if orden == 'autor' else '' }}">Autor</a>
+  <a href="/?{{ base_qs }}&orden=fecha" class="{{ 'active' if orden == 'fecha' else '' }}">Recientes</a>
+</div>
+
 <div class="table-card">
+  <div class="table-scroll">
   <table class="book-table">
     <thead>
       <tr>
@@ -58,21 +72,22 @@
       {% endfor %}
     </tbody>
   </table>
+  </div>
 
   {% if total_pages > 1 %}
   <div class="pagination">
-    {% set base_qs = "q=" ~ q ~ "&categoria=" ~ categoria_sel %}
-    {% if page > 1 %}<a href="/?{{ base_qs }}&page={{ page - 1 }}">‹</a>{% endif %}
+    {% set page_qs = base_qs ~ "&orden=" ~ orden %}
+    {% if page > 1 %}<a href="/?{{ page_qs }}&page={{ page - 1 }}">‹</a>{% endif %}
     {% for p in page_window %}
       {% if p is none %}
       <span class="ellipsis">…</span>
       {% elif p == page %}
       <span class="current">{{ p }}</span>
       {% else %}
-      <a href="/?{{ base_qs }}&page={{ p }}">{{ p }}</a>
+      <a href="/?{{ page_qs }}&page={{ p }}">{{ p }}</a>
       {% endif %}
     {% endfor %}
-    {% if page < total_pages %}<a href="/?{{ base_qs }}&page={{ page + 1 }}">›</a>{% endif %}
+    {% if page < total_pages %}<a href="/?{{ page_qs }}&page={{ page + 1 }}">›</a>{% endif %}
   </div>
   {% endif %}
 </div>

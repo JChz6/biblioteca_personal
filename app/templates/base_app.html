@@ -1,36 +1,110 @@
 {% extends "base.html" %}
 {% block body %}
 <div class="shell">
+  <div class="sidebar-backdrop"></div>
   <aside class="sidebar">
-    <div class="brand">
-      <span class="brand-mark mono">B</span>
-      <div>
-        <div class="brand-name">Biblioteca</div>
-        <div class="brand-sub">Personal</div>
+    <div class="sidebar-head">
+      <div class="brand">
+        <img src="/static/icon-192.png?v={{ static_version }}" alt="" class="brand-mark">
+        <div class="brand-text">
+          <div class="brand-name">Biblioteca</div>
+          <div class="brand-sub">Personal</div>
+        </div>
       </div>
+      <button type="button" id="sidebar-toggle" class="sidebar-toggle-btn" title="Colapsar menú" aria-label="Colapsar menú">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg>
+      </button>
     </div>
+
     <nav class="sidebar-nav">
-      <a href="/" class="{{ 'active' if request.url.path == '/' else '' }}">Catálogo</a>
-      <a href="/subir" class="{{ 'active' if request.url.path == '/subir' else '' }}">Subir</a>
+      <span class="nav-label">Explorar</span>
+      <a href="/?orden=titulo" class="{{ 'active' if request.url.path == '/' and request.query_params.get('orden', 'titulo') == 'titulo' and not request.query_params.get('categoria') and not request.query_params.get('autor') else '' }}">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h10"/></svg>
+        <span class="label">Catálogo</span>
+      </a>
+      <a href="/?orden=fecha" class="{{ 'active' if request.query_params.get('orden') == 'fecha' else '' }}">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span class="label">Recientes</span>
+      </a>
+      <a href="/categorias" class="{{ 'active' if request.url.path == '/categorias' else '' }}">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M3 11l8-8h7a2 2 0 012 2v7l-8 8a2 2 0 01-2.83 0l-6.17-6.17a2 2 0 010-2.83z"/></svg>
+        <span class="label">Categorías</span>
+      </a>
+      <a href="/autores" class="{{ 'active' if request.url.path == '/autores' else '' }}">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM4 20.5C4 17.5 7.6 15 12 15s8 2.5 8 5.5"/></svg>
+        <span class="label">Autores</span>
+      </a>
+
+      <span class="nav-label">Cuenta</span>
+      <a href="/subir" class="{{ 'active' if request.url.path == '/subir' else '' }}">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+        <span class="label">Subir</span>
+      </a>
       {% if user.role == 'owner' %}
-      <a href="/panel" class="{{ 'active' if request.url.path == '/panel' else '' }}">Panel</a>
+      <a href="/panel" class="{{ 'active' if request.url.path == '/panel' else '' }}">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7l7-4z"/></svg>
+        <span class="label">Panel</span>
+      </a>
       {% endif %}
     </nav>
+
     <div class="sidebar-footer">
       <div class="user-chip">
         <span class="user-avatar">{{ user.email[0]|upper }}</span>
-        <div>
+        <div class="user-info">
           <div class="user-email">{{ user.email }}</div>
           <div class="user-role">{{ user.role }}</div>
         </div>
       </div>
-      <a href="/logout" class="logout-link">Cerrar sesión</a>
+      <a href="/logout" class="logout-link">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m0-9H5a2 2 0 00-2 2v14a2 2 0 002 2h2"/></svg>
+        <span class="label">Cerrar sesión</span>
+      </a>
     </div>
   </aside>
+
   <div class="main">
+    <div class="mobile-topbar">
+      <button type="button" id="sidebar-open-toggle" class="sidebar-toggle-btn" aria-label="Abrir menú">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+      <div class="brand">
+        <img src="/static/icon-192.png?v={{ static_version }}" alt="" class="brand-mark">
+        <span class="brand-name">Biblioteca</span>
+      </div>
+      <span class="user-avatar">{{ user.email[0]|upper }}</span>
+    </div>
     <div class="main-inner">
       {% block content %}{% endblock %}
     </div>
   </div>
 </div>
+<script>
+(function () {
+  var shell = document.querySelector('.shell');
+  var KEY = 'biblioteca_sidebar_collapsed';
+  if (localStorage.getItem(KEY) === '1') shell.classList.add('sidebar-collapsed');
+
+  var collapseBtn = document.getElementById('sidebar-toggle');
+  if (collapseBtn) {
+    collapseBtn.addEventListener('click', function () {
+      shell.classList.toggle('sidebar-collapsed');
+      localStorage.setItem(KEY, shell.classList.contains('sidebar-collapsed') ? '1' : '0');
+    });
+  }
+
+  var openBtn = document.getElementById('sidebar-open-toggle');
+  if (openBtn) {
+    openBtn.addEventListener('click', function () {
+      shell.classList.toggle('sidebar-open');
+    });
+  }
+  var backdrop = document.querySelector('.sidebar-backdrop');
+  if (backdrop) {
+    backdrop.addEventListener('click', function () {
+      shell.classList.remove('sidebar-open');
+    });
+  }
+})();
+</script>
 {% endblock %}
