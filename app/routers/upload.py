@@ -1,7 +1,7 @@
 import os
 import shutil
 
-from fastapi import APIRouter, Depends, Form, Request, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, Form, Request, UploadFile
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
@@ -9,7 +9,7 @@ from app.auth.dependencies import require_login
 from app.config import get_settings
 from app.db.models import Categoria, PendingUpload, User
 from app.db.session import get_db
-from app.services.approval import aprobar_pending
+from app.services.approval import aprobar_pending_en_segundo_plano
 from app.templating import templates
 
 router = APIRouter()
@@ -24,6 +24,7 @@ def subir_form(request: Request, user: User = Depends(require_login), db: Sessio
 @router.post("/subir")
 def subir_submit(
     request: Request,
+    background_tasks: BackgroundTasks,
     archivo: UploadFile,
     autor: str = Form(...),
     nuevo_titulo: str = Form(...),
@@ -59,7 +60,7 @@ def subir_submit(
     db.commit()
 
     if user.role == "owner":
-        aprobar_pending(db, pending, aprobado_por=user.email)
-        return RedirectResponse(url="/?msg=subido", status_code=303)
+        background_tasks.add_task(aprobar_pending_en_segundo_plano, pending.id, user.email)
+        return RedirectResponse(url="/?msg=procesando", status_code=303)
 
     return RedirectResponse(url="/subir?msg=pendiente", status_code=303)

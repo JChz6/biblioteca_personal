@@ -13,6 +13,8 @@
 
 {% if request.query_params.get('msg') == 'subido' %}
 <p class="banner">Libro subido y publicado en el catálogo.</p>
+{% elif request.query_params.get('msg') == 'procesando' %}
+<p class="banner banner-info">Tu libro se está subiendo y procesando en segundo plano. Aparecerá en el catálogo en unos momentos — no hace falta que esperes en esta página.</p>
 {% endif %}
 
 {% if autor_sel %}

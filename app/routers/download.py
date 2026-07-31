@@ -25,7 +25,7 @@ def descargar(book_id: str, user: User = Depends(require_login)):
     if libro is None or not libro.get("uri_gcs"):
         raise HTTPException(status_code=404, detail="Libro no encontrado")
 
-    nombre_archivo = safe_filename(f"{libro['nuevo_titulo']}{libro['extension']}")
+    nombre_archivo = safe_filename(f"{libro['nuevo_titulo']} - {libro['autor']}{libro['extension']}")
     return StreamingResponse(
         stream_blob(libro["uri_gcs"]),
         media_type="application/octet-stream",

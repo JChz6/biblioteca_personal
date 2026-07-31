@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.bigquery.catalogo import upsert_libro_aprobado
 from app.db.models import PendingUpload
+from app.db.session import SessionLocal
 from app.gcs.storage import construir_urls_gcs, delete_blob, safe_filename, upload_to_gcs
 from app.text_utils import normalizar_titulo
 
@@ -64,6 +65,21 @@ def aprobar_pending(db: Session, pending: PendingUpload, aprobado_por: str) -> s
     db.add(pending)
     db.commit()
     return pending.id
+
+
+def aprobar_pending_en_segundo_plano(pending_id: str, aprobado_por: str) -> None:
+    """
+    Igual que aprobar_pending, pero abre su propia sesión de DB — para usarse
+    desde un BackgroundTask, donde la sesión de la request original ya se cerró
+    para cuando esto corre.
+    """
+    db = SessionLocal()
+    try:
+        pending = db.get(PendingUpload, pending_id)
+        if pending is not None and pending.status == "pendiente":
+            aprobar_pending(db, pending, aprobado_por=aprobado_por)
+    finally:
+        db.close()
 
 
 def rechazar_pending(db: Session, pending: PendingUpload, rechazado_por: str, motivo: str = "") -> None:

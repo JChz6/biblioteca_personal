@@ -450,6 +450,11 @@ a { color: var(--neon-cyan); }
   margin-bottom: 1.25rem;
   font-size: 0.86rem;
 }
+.banner-info {
+  background: rgba(255, 204, 51, 0.07);
+  border-color: rgba(255, 204, 51, 0.3);
+  color: var(--neon-amber);
+}
 
 /* ---------- pagination ---------- */
 .pagination {
