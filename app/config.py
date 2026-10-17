@@ -1,5 +1,7 @@
 from functools import lru_cache
 
+from pydantic import Field
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -11,6 +13,12 @@ class Settings(BaseSettings):
     google_client_secret: str
     session_secret_key: str
     base_url: str = "http://localhost:8000"
+
+    session_max_age_seconds: int = Field(default=86400, ge=300, le=1209600)
+    max_upload_bytes: int = Field(default=700_000_000, gt=0, le=700_000_000)
+    max_staging_bytes: int = Field(default=5_000_000_000, gt=0)
+    max_pending_per_user: int = Field(default=10, gt=0)
+    min_free_disk_bytes: int = Field(default=1_000_000_000, ge=0)
 
     gcp_project_id: str = "big-query-406221"
     bq_dataset: str = "biblioteca_personal"

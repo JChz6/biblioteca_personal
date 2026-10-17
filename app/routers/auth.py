@@ -42,7 +42,7 @@ async def auth_callback(request: Request):
     return RedirectResponse(url="/")
 
 
-@router.get("/logout")
+@router.post("/logout")
 async def logout(request: Request):
     request.session.clear()
-    return RedirectResponse(url="/")
+    return RedirectResponse(url="/", status_code=303)

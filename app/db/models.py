@@ -44,7 +44,7 @@ class PendingUpload(Base):
     privado: Mapped[bool] = mapped_column(Boolean, default=False)
 
     uploader_email: Mapped[str] = mapped_column(ForeignKey("users.email"))
-    status: Mapped[str] = mapped_column(String, default="pendiente")  # pendiente | aprobado | rechazado
+    status: Mapped[str] = mapped_column(String, default="pendiente")  # pendiente | procesando | error_publicacion | aprobado | rechazado
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

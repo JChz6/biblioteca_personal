@@ -6,13 +6,20 @@ from starlette.middleware.sessions import SessionMiddleware
 from app.auth.dependencies import NotAuthenticated, NotAuthorized
 from app.bigquery.catalogo import get_catalogo
 from app.config import get_settings
+from app.security import FormSecurityMiddleware
 from app.db.session import init_db
 from app.routers import admin, auth, catalog, download, upload
 
 settings = get_settings()
 
 app = FastAPI(title="Biblioteca Personal")
-app.add_middleware(SessionMiddleware, secret_key=settings.session_secret_key)
+app.add_middleware(FormSecurityMiddleware)
+# Session must wrap form security so the verified session is available before parsing.
+app.add_middleware(
+    SessionMiddleware, secret_key=settings.session_secret_key,
+    https_only=settings.base_url.lower().startswith("https://"),
+    same_site="lax", max_age=settings.session_max_age_seconds,
+)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 

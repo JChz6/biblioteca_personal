@@ -1,96 +1,50 @@
 {% extends "base_app.html" %}
 {% block title %}Catálogo — Biblioteca Personal{% endblock %}
 {% block content %}
-<div class="page-header">
-  <div>
-    <h1>Catálogo</h1>
-    <p class="page-subtitle">{{ total }} libro{{ "s" if total != 1 else "" }} en tu biblioteca</p>
+<div class="catalog-hero">
+  <div class="hero-copy">
+    <p class="collection-label">Colección completa</p>
+    <h1>Sé como Godzilla.</h1>
+    <button type="button" class="godzilla-link" id="godzilla-open" aria-haspopup="dialog">¿Godzilla?</button>
+    <p class="page-subtitle">Busca por título o autor y descarga el formato que necesites.</p>
   </div>
-  <div class="page-header-actions">
-    <a href="/subir" class="button">+ Subir libro</a>
+  <div class="contribution">
+    <span class="contribution-note">También puedes<br>contribuir<svg viewBox="0 0 100 40" aria-hidden="true"><path d="M4 9C24 34 63 31 92 18M78 10l15 8-12 12"/></svg></span>
+    <a href="/subir" class="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v16M4 12h16"/></svg>Subir archivo</a>
   </div>
 </div>
-
 {% if request.query_params.get('msg') == 'subido' %}
-<p class="banner">Libro subido y publicado en el catálogo.</p>
+<p class="banner" role="status">Libro subido y publicado en el catálogo.</p>
 {% elif request.query_params.get('msg') == 'procesando' %}
-<p class="banner banner-info">Tu libro se está subiendo y procesando en segundo plano. Aparecerá en el catálogo en unos momentos — no hace falta que esperes en esta página.</p>
+<p class="banner banner-info" role="status">Tu libro se está subiendo y procesando en segundo plano. Aparecerá en el catálogo al terminar. <a href="/panel">Ver estado de publicación</a>.</p>
 {% endif %}
-
-{% if autor_sel %}
-<p class="filter-chip">Autor: <strong>{{ autor_sel }}</strong> — <a href="/?q={{ q }}&categoria={{ categoria_sel }}&orden={{ orden }}">Quitar filtro</a></p>
-{% endif %}
-
-<form class="filters" method="get" action="/">
-  <input type="text" name="q" placeholder="Buscar por título o autor" value="{{ q }}">
-  <select name="categoria">
-    <option value="">Todas las categorías</option>
-    {% for c in categorias %}
-    <option value="{{ c }}" {% if c == categoria_sel %}selected{% endif %}>{{ c }}</option>
-    {% endfor %}
-  </select>
-  <input type="hidden" name="orden" value="{{ orden }}">
-  <input type="hidden" name="autor" value="{{ autor_sel }}">
-  <button type="submit" class="button-ghost">Filtrar</button>
+<form class="catalog-filters" method="get" action="/" role="search">
+  <div class="search-box"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="7.5"/><path d="m16 16 5 5"/></svg><input type="search" name="q" aria-label="Buscar por título o autor" placeholder="Buscar en la biblioteca…" value="{{ q }}"><button type="submit" class="search-submit">Buscar</button></div>
+  <div class="filter-toolbar">
+    <button type="button" class="button-ghost mobile-filter-toggle" id="filter-toggle" aria-expanded="false" aria-controls="filter-fields">Filtros{% if categoria_sel or autor_sel %} · Activos{% endif %}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+    <div class="filter-fields" id="filter-fields">
+      <select name="categoria" aria-label="Categoría"><option value="">Todas las categorías</option>{% for c in categorias %}<option value="{{ c }}" {% if c == categoria_sel %}selected{% endif %}>{{ c }}</option>{% endfor %}</select>
+      <select name="autor" aria-label="Autor"><option value="">Todos los autores</option>{% for a in autores %}<option value="{{ a }}" {% if a == autor_sel %}selected{% endif %}>{{ a }}</option>{% endfor %}</select>
+    </div>
+    <select name="orden" aria-label="Ordenar libros" class="sort-select">{% for value, label in [('titulo', 'Título A–Z'), ('autor', 'Autor A–Z'), ('fecha', 'Recientes')] %}<option value="{{ value }}" {% if orden == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+    <noscript><button type="submit" class="button-ghost">Aplicar filtros</button></noscript>
+  </div>
 </form>
-
-{% set base_qs = "q=" ~ q ~ "&categoria=" ~ categoria_sel ~ "&autor=" ~ autor_sel %}
-<div class="sort-toggle">
-  <a href="/?{{ base_qs }}&orden=titulo" class="{{ 'active' if orden == 'titulo' else '' }}">Título</a>
-  <a href="/?{{ base_qs }}&orden=autor" class="{{ 'active' if orden == 'autor' else '' }}">Autor</a>
-  <a href="/?{{ base_qs }}&orden=fecha" class="{{ 'active' if orden == 'fecha' else '' }}">Recientes</a>
+{% if q or categoria_sel or autor_sel %}<p class="filter-chip">{{ total }} resultado{{ 's' if total != 1 else '' }}{% if categoria_sel %} · {{ categoria_sel }}{% endif %}{% if autor_sel %} · {{ autor_sel }}{% endif %} · <a href="/">Limpiar filtros</a></p>{% endif %}
+<div class="catalog-list" aria-label="Libros">
+  <div class="catalog-columns" aria-hidden="true"><span>Título / Autor</span><span>Categoría</span><span>Formatos</span></div>
+  {% for libro in libros %}
+  <article class="book-row">
+    <div class="book-identity"><span class="document-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8zM14 3v5h5M9 12h6M9 16h6"/></svg></span><div><h2 class="book-title">{{ libro.nuevo_titulo }}</h2><p class="book-meta">{{ libro.autor }}</p>{% if libro.privado %}<span class="badge badge-privado">Privado</span>{% endif %}</div></div>
+    <p class="book-category">{{ libro.categoria }}</p>
+    <div class="format-group">{% for f in libro.formatos %}<a class="button-small" href="/descargar/{{ f.id }}" aria-label="Descargar {{ libro.nuevo_titulo }} en {{ f.extension|upper }}">{{ f.extension|upper }}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg></a>{% endfor %}</div>
+  </article>
+  {% else %}<div class="empty-state"><h2>No se encontraron libros.</h2><p>Prueba otro título o autor, o elimina los filtros.</p><a href="/" class="button-ghost">Ver colección completa</a></div>{% endfor %}
 </div>
-
-<div class="table-card">
-  <div class="table-scroll">
-  <table class="book-table">
-    <thead>
-      <tr>
-        <th>Título</th>
-        <th>Autor</th>
-        <th>Categoría</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for libro in libros %}
-      <tr>
-        <td>
-          <span class="book-title">{{ libro.nuevo_titulo }}</span>
-          {% if libro.privado %}<span class="badge badge-privado">Privado</span>{% endif %}
-        </td>
-        <td class="book-meta">{{ libro.autor }}</td>
-        <td class="book-meta">{{ libro.categoria }}</td>
-        <td>
-          <span class="format-group">
-            {% for f in libro.formatos %}
-            <a class="button-small" href="/descargar/{{ f.id }}">{{ f.extension|upper }}</a>
-            {% endfor %}
-          </span>
-        </td>
-      </tr>
-      {% else %}
-      <tr><td colspan="4" class="book-meta">No se encontraron libros.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  </div>
-
-  {% if total_pages > 1 %}
-  <div class="pagination">
-    {% set page_qs = base_qs ~ "&orden=" ~ orden %}
-    {% if page > 1 %}<a href="/?{{ page_qs }}&page={{ page - 1 }}">‹</a>{% endif %}
-    {% for p in page_window %}
-      {% if p is none %}
-      <span class="ellipsis">…</span>
-      {% elif p == page %}
-      <span class="current">{{ p }}</span>
-      {% else %}
-      <a href="/?{{ page_qs }}&page={{ p }}">{{ p }}</a>
-      {% endif %}
-    {% endfor %}
-    {% if page < total_pages %}<a href="/?{{ page_qs }}&page={{ page + 1 }}">›</a>{% endif %}
-  </div>
-  {% endif %}
-</div>
+{% set base_qs = 'q=' ~ (q|urlencode) ~ '&categoria=' ~ (categoria_sel|urlencode) ~ '&autor=' ~ (autor_sel|urlencode) ~ '&orden=' ~ orden %}
+<div class="catalog-footer"><p>Página {{ page }} de {{ total_pages }} <span>· {{ total }} libros</span></p>{% if total_pages > 1 %}<nav class="pagination" aria-label="Páginas del catálogo">{% if page > 1 %}<a href="/?{{ base_qs }}&page={{ page - 1 }}" aria-label="Página anterior">‹</a>{% endif %}{% for p in page_window %}{% if p is none %}<span class="ellipsis">…</span>{% elif p == page %}<span class="current" aria-current="page">{{ p }}</span>{% else %}<a href="/?{{ base_qs }}&page={{ p }}" aria-label="Página {{ p }}">{{ p }}</a>{% endif %}{% endfor %}{% if page < total_pages %}<a href="/?{{ base_qs }}&page={{ page + 1 }}" aria-label="Página siguiente">›</a>{% endif %}</nav>{% endif %}</div>
+<dialog id="godzilla-dialog" class="godzilla-dialog" aria-label="¿Godzilla? El origen del nombre de la biblioteca">
+  <button type="button" class="dialog-close icon-button" aria-label="Cerrar imagen" autofocus><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 12"/></svg></button>
+  <img src="/static/godzilla.png" width="504" height="759" alt="Godzilla copia y escanea libros de la biblioteca para subirlos gratis a internet. Godzilla entiende que la libertad de acceso a material académico es fundamental para el desarrollo del conocimiento. Sé como Godzilla. Debajo, Godzilla está junto a una fotocopiadora con un libro en las manos.">
+</dialog>
 {% endblock %}

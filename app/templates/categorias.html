@@ -8,14 +8,14 @@
   </div>
 </div>
 
-<div class="entity-grid">
+<ul class="entity-list category-list">
   {% for c in categorias_lista %}
-  <a class="entity-card" href="/?categoria={{ c.nombre|urlencode }}">
+  <li><a class="entity-row" href="/?categoria={{ c.nombre|urlencode }}">
     <span class="entity-name" title="{{ c.nombre }}">{{ c.nombre }}</span>
     <span class="entity-count">{{ c.total }} libro{{ "s" if c.total != 1 else "" }}</span>
-  </a>
+  </a></li>
   {% else %}
-  <p class="entity-empty">No hay categorías todavía.</p>
+  <li class="entity-empty">No hay categorías todavía.</li>
   {% endfor %}
-</div>
+</ul>
 {% endblock %}

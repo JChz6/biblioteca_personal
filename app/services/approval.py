@@ -1,3 +1,4 @@
+import logging
 import os
 from datetime import datetime
 
@@ -8,6 +9,8 @@ from app.db.models import PendingUpload
 from app.db.session import SessionLocal
 from app.gcs.storage import construir_urls_gcs, delete_blob, safe_filename, upload_to_gcs
 from app.text_utils import normalizar_titulo
+
+logger = logging.getLogger(__name__)
 
 
 def aprobar_pending(db: Session, pending: PendingUpload, aprobado_por: str) -> str:
@@ -76,8 +79,15 @@ def aprobar_pending_en_segundo_plano(pending_id: str, aprobado_por: str) -> None
     db = SessionLocal()
     try:
         pending = db.get(PendingUpload, pending_id)
-        if pending is not None and pending.status == "pendiente":
+        if pending is not None and pending.status == "procesando":
             aprobar_pending(db, pending, aprobado_por=aprobado_por)
+    except Exception:
+        db.rollback()
+        logger.exception("No se pudo publicar la subida %s", pending_id)
+        pending = db.get(PendingUpload, pending_id)
+        if pending is not None and pending.status == "procesando":
+            pending.status = "error_publicacion"
+            db.commit()
     finally:
         db.close()
 

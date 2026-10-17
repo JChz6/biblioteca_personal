@@ -12,7 +12,7 @@ def _compute_static_version() -> str:
     """
     static_dir = Path(__file__).resolve().parent / "static"
     digest = hashlib.md5()
-    for name in ("style.css", "favicon.ico"):
+    for name in ("style.css", "app.js", "library-icon.svg"):
         try:
             digest.update((static_dir / name).read_bytes())
         except FileNotFoundError:

@@ -8,6 +8,28 @@
   </div>
 </div>
 
+{% if publicaciones %}
+<section>
+  <h2>Tus publicaciones</h2>
+  {% for p in publicaciones %}
+  <div class="pending-card">
+    <p><strong>{{ p.nuevo_titulo }}</strong> —
+      {% if p.status == 'procesando' %}Publicando. Actualiza esta página en unos momentos.
+      {% else %}No se pudo completar la publicación. El archivo se conserva para reintentar.{% endif %}
+    </p>
+    {% if p.status == 'error_publicacion' %}
+    <form method="post" action="/panel/{{ p.id }}/reintentar">
+      <button type="submit" class="button-small">Reintentar publicación</button>
+    </form>
+    <form method="post" action="/panel/{{ p.id }}/rechazar">
+      <button type="submit" class="button-danger">Descartar archivo</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+
 <section>
   <h2>Pendientes de aprobación <span class="badge badge-pendiente">{{ pendientes|length }}</span></h2>
   {% for p in pendientes %}

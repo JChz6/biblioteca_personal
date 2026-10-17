@@ -1,4 +1,5 @@
 import math
+import unicodedata
 
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
@@ -13,6 +14,20 @@ router = APIRouter()
 
 PAGE_SIZE = 24
 ORDEN_VALIDOS = {"titulo", "autor", "fecha"}
+
+
+def _alphabetical_key(name: str) -> str:
+    # Spanish ordering: ignore accents, but retain Ñ after N.
+    return "".join(char for char in unicodedata.normalize("NFD", name.strip().casefold().replace("ñ", "n~"))
+                   if not unicodedata.combining(char))
+
+
+def _author_initial(name: str) -> str:
+    initial = name.strip()[:1].upper()
+    if initial == "Ñ":
+        return initial
+    initial = _alphabetical_key(initial).upper()
+    return initial if len(initial) == 1 and "A" <= initial <= "Z" else "#"
 
 
 def _pagination_window(current: int, total: int, radius: int = 2) -> list[int | None]:
@@ -64,6 +79,7 @@ def catalog_view(
         {
             "libros": libros_pagina,
             "categorias": categorias,
+            "autores": sorted(contar_por_autor(incluir_privados=incluir_privados), key=str.casefold),
             "q": q or "",
             "categoria_sel": categoria or "",
             "autor_sel": autor or "",
@@ -83,9 +99,16 @@ def autores_view(request: Request, user: User = Depends(require_login)):
     conteo = contar_por_autor(incluir_privados=incluir_privados)
     autores = sorted(
         ({"nombre": nombre, "total": total} for nombre, total in conteo.items()),
-        key=lambda a: a["nombre"].lower(),
+        key=lambda a: _alphabetical_key(a["nombre"]),
     )
-    return templates.TemplateResponse(request, "autores.html", {"user": user, "autores": autores})
+    groups: dict[str, list[dict]] = {}
+    for author in autores:
+        groups.setdefault(_author_initial(author["nombre"]), []).append(author)
+    letters = sorted(groups, key=lambda letter: (letter == "#", _alphabetical_key(letter)))
+    return templates.TemplateResponse(request, "autores.html", {
+        "user": user, "autores": autores,
+        "grupos_autores": [{"letra": letter, "autores": groups[letter]} for letter in letters],
+    })
 
 
 @router.get("/categorias")
@@ -93,5 +116,5 @@ def categorias_view(request: Request, user: User = Depends(require_login), db: S
     incluir_privados = user.role == "owner"
     conteo = contar_por_categoria(incluir_privados=incluir_privados)
     nombres = [c.nombre for c in db.query(Categoria).order_by(Categoria.nombre).all()]
-    categorias = [{"nombre": n, "total": conteo.get(n, 0)} for n in nombres]
+    categorias = [{"nombre": n, "total": conteo.get(n, 0)} for n in sorted(nombres, key=_alphabetical_key)]
     return templates.TemplateResponse(request, "categorias.html", {"user": user, "categorias_lista": categorias})

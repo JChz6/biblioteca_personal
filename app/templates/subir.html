@@ -16,13 +16,14 @@
 
 <form method="post" action="/subir" enctype="multipart/form-data" class="upload-form">
   <label>Archivo
-    <input type="file" name="archivo" required>
+    <input type="file" name="archivo" accept="{{ allowed_extensions }}" required>
   </label>
+  <p class="book-meta">Máximo {{ max_upload_mb }} MB por archivo. Formatos: PDF, EPUB, MOBI, AZW, AZW3, FB2, CBR, CBZ, TXT y RTF.</p>
   <label>Título
-    <input type="text" name="nuevo_titulo" required>
+    <input type="text" name="nuevo_titulo" maxlength="300" required>
   </label>
   <label>Autor
-    <input type="text" name="autor" required>
+    <input type="text" name="autor" maxlength="200" required>
   </label>
   <label>Categoría
     <select name="categoria" required>
@@ -34,10 +35,10 @@
   </label>
   <label class="checkbox-label">
     <input type="checkbox" name="privado">
-    Privado (solo tú lo puedes ver/descargar)
+    Privado (solo el propietario de la biblioteca puede verlo y descargarlo)
   </label>
   <label>Comentarios (opcional)
-    <textarea name="comentarios" rows="3"></textarea>
+    <textarea name="comentarios" maxlength="4000" rows="3"></textarea>
   </label>
   <button type="submit" class="button">
     {% if user.role == 'owner' %}Subir y publicar{% else %}Enviar para aprobación{% endif %}

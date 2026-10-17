@@ -5,7 +5,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import get_settings
-from app.db.models import Base, Categoria, User
+from app.db.models import Base, Categoria, PendingUpload, User
 
 # Categorías sembradas a partir de las existentes en BigQuery al momento de esta migración.
 # "Política y Sociedad" / "Política y sociedad" llegaban duplicadas por capitalización inconsistente
@@ -42,6 +42,13 @@ def init_db() -> None:
             db.add(User(email=settings.owner_email, role="owner", display_name="Owner", added_by="system"))
         elif owner.role != "owner":
             owner.role = "owner"
+
+        # The deployment runs one worker: interrupted owner jobs need an explicit retry.
+        owner_emails = db.query(User.email).filter(User.role == "owner")
+        db.query(PendingUpload).filter(
+            (PendingUpload.status == "procesando") |
+            ((PendingUpload.status == "pendiente") & PendingUpload.uploader_email.in_(owner_emails))
+        ).update({PendingUpload.status: "error_publicacion"}, synchronize_session=False)
 
         existing = {c.nombre for c in db.query(Categoria).all()}
         for nombre in CATEGORIAS_INICIALES:
