@@ -140,11 +140,15 @@ def agrupar_por_obra(libros: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "categoria": libro.get("categoria"),
                 "privado": False,
                 "fecha_carga": None,
+                "fecha_modificacion": None,
                 "formatos": [],
             }
             orden.append(clave)
         grupo = grupos[clave]
         grupo["privado"] = grupo["privado"] or bool(libro.get("privado"))
+        modificacion = libro.get("fecha_modificacion")
+        if modificacion is not None and (grupo["fecha_modificacion"] is None or modificacion > grupo["fecha_modificacion"]):
+            grupo["fecha_modificacion"] = modificacion
         fecha = libro.get("fecha_carga")
         if fecha is not None and (grupo["fecha_carga"] is None or fecha > grupo["fecha_carga"]):
             grupo["fecha_carga"] = fecha
@@ -166,7 +170,9 @@ def ordenar_grupos(grupos: list[dict[str, Any]], orden: str) -> list[dict[str, A
             key=lambda g: ((g.get("autor") or "").lower(), (g.get("nuevo_titulo") or "").lower()),
         )
     if orden == "fecha":
-        return sorted(grupos, key=lambda g: g.get("fecha_carga") or datetime.min, reverse=True)
+        # Stable sorting preserves ascending author/title within each date.
+        por_autor_titulo = sorted(grupos, key=lambda g: (g.get("autor") or "", g.get("nuevo_titulo") or ""))
+        return sorted(por_autor_titulo, key=lambda g: g.get("fecha_modificacion") or datetime.min, reverse=True)
     return sorted(grupos, key=lambda g: (g.get("nuevo_titulo") or "").lower())
 
 

@@ -53,13 +53,13 @@ def catalog_view(
     q: str | None = None,
     categoria: str | None = None,
     autor: str | None = None,
-    orden: str = "titulo",
+    orden: str = "fecha",
     page: int = 1,
     user: User = Depends(require_login),
     db: Session = Depends(get_db),
 ):
     if orden not in ORDEN_VALIDOS:
-        orden = "titulo"
+        orden = "fecha"
     incluir_privados = user.role == "owner"
     libros = listar_catalogo(
         search=q, categoria=categoria or None, autor=autor or None, incluir_privados=incluir_privados
