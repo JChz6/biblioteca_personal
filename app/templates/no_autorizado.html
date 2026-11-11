@@ -1,9 +1,9 @@
 {% extends "base_auth.html" %}
-{% block title %}Acceso no autorizado{% endblock %}
+{% block title %}{{ t('unauth_title') }}{% endblock %}
 {% block content %}
 <div class="login-box">
-  <h1>Acceso no autorizado</h1>
-  <p>El email <strong>{{ email }}</strong> no está en la lista de personas autorizadas.</p>
-  <p>Pídele al dueño de la biblioteca que te agregue.</p>
+  <h1>{{ t('unauth_title') }}</h1>
+  <p>{{ t('unauth_1') }} <strong>{{ email }}</strong> {{ t('unauth_2') }}</p>
+  <p>{{ t('unauth_ask') }}</p>
 </div>
 {% endblock %}

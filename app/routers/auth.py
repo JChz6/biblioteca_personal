@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
+from app import i18n
 from app.auth.oauth import oauth
 from app.config import get_settings
 from app.db.models import User
@@ -27,7 +28,7 @@ async def auth_callback(request: Request):
     token = await oauth.google.authorize_access_token(request)
     userinfo = token.get("userinfo")
     if not userinfo or not userinfo.get("email"):
-        return HTMLResponse("No se pudo obtener el email de Google.", status_code=400)
+        return HTMLResponse(i18n.translate(i18n.get_lang(request), "google_email_fail"), status_code=400)
 
     email = userinfo["email"].lower()
     with SessionLocal() as db:
@@ -46,3 +47,17 @@ async def auth_callback(request: Request):
 async def logout(request: Request):
     request.session.clear()
     return RedirectResponse(url="/", status_code=303)
+
+
+@router.get("/idioma/{code}")
+async def set_language(request: Request, code: str, next: str = "/"):
+    # Solo rutas internas: evita redirecciones abiertas (//evil.com, /\evil.com).
+    if not next.startswith("/") or next.startswith("//") or next.startswith("/\\"):
+        next = "/"
+    response = RedirectResponse(url=next, status_code=303)
+    if code in i18n.LANGS:
+        response.set_cookie(
+            i18n.COOKIE_NAME, code, max_age=60 * 60 * 24 * 365, samesite="lax",
+            secure=get_settings().base_url.lower().startswith("https://"),
+        )
+    return response

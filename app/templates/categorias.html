@@ -1,10 +1,10 @@
 {% extends "base_app.html" %}
-{% block title %}Categorías — Biblioteca Personal{% endblock %}
+{% block title %}{{ t('nav_categories') }} — {{ t('site_title') }}{% endblock %}
 {% block content %}
 <div class="page-header">
   <div>
-    <h1>Categorías</h1>
-    <p class="page-subtitle">{{ categorias_lista|length }} categoría{{ "s" if categorias_lista|length != 1 else "" }}</p>
+    <h1>{{ t('nav_categories') }}</h1>
+    <p class="page-subtitle">{{ tn('categories_count', categorias_lista|length) }}</p>
   </div>
 </div>
 
@@ -12,10 +12,10 @@
   {% for c in categorias_lista %}
   <li><a class="entity-row" href="/?categoria={{ c.nombre|urlencode }}">
     <span class="entity-name" title="{{ c.nombre }}">{{ c.nombre }}</span>
-    <span class="entity-count">{{ c.total }} libro{{ "s" if c.total != 1 else "" }}</span>
+    <span class="entity-count">{{ tn('books', c.total) }}</span>
   </a></li>
   {% else %}
-  <li class="entity-empty">No hay categorías todavía.</li>
+  <li class="entity-empty">{{ t('no_categories') }}</li>
   {% endfor %}
 </ul>
 {% endblock %}

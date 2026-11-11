@@ -3,6 +3,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
+from app import i18n
 from app.auth.dependencies import NotAuthenticated, NotAuthorized
 from app.bigquery.catalogo import get_catalogo
 from app.config import get_settings
@@ -39,7 +40,8 @@ async def handle_not_authenticated(request: Request, exc: NotAuthenticated) -> R
 
 @app.exception_handler(NotAuthorized)
 async def handle_not_authorized(request: Request, exc: NotAuthorized) -> HTMLResponse:
-    return HTMLResponse("<h1>403</h1><p>No tienes permiso para ver esta página.</p>", status_code=403)
+    message = i18n.translate(i18n.get_lang(request), "forbidden")
+    return HTMLResponse(f"<h1>403</h1><p>{message}</p>", status_code=403)
 
 
 app.include_router(auth.router)

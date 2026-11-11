@@ -8,13 +8,13 @@
   function closeMenu() {
     header.classList.remove('menu-open');
     menu.setAttribute('aria-expanded', 'false');
-    menu.setAttribute('aria-label', 'Abrir menú');
+    menu.setAttribute('aria-label', menu.dataset.labelOpen);
   }
   menu.addEventListener('click', () => {
     const open = !header.classList.contains('menu-open');
     header.classList.toggle('menu-open', open);
     menu.setAttribute('aria-expanded', String(open));
-    menu.setAttribute('aria-label', open ? 'Cerrar menú' : 'Abrir menú');
+    menu.setAttribute('aria-label', open ? menu.dataset.labelClose : menu.dataset.labelOpen);
     showHeader();
   });
   header.addEventListener('focusin', showHeader);

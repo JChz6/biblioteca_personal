@@ -1,33 +1,33 @@
 {% extends "base_app.html" %}
-{% block title %}Subir libro — Biblioteca Personal{% endblock %}
+{% block title %}{{ t('upload_page') }} — {{ t('site_title') }}{% endblock %}
 {% block content %}
 <div class="page-header">
   <div>
-    <h1>Subir un libro</h1>
+    <h1>{{ t('upload_h1') }}</h1>
     <p class="page-subtitle">
-      {% if user.role == 'owner' %}Se publica directo en el catálogo.{% else %}Queda pendiente hasta que el dueño lo apruebe.{% endif %}
+      {% if user.role == 'owner' %}{{ t('upload_owner_sub') }}{% else %}{{ t('upload_friend_sub') }}{% endif %}
     </p>
   </div>
 </div>
 
 {% if request.query_params.get('msg') == 'pendiente' %}
-<p class="banner">Tu libro quedó pendiente de aprobación. El dueño lo revisará pronto.</p>
+<p class="banner">{{ t('msg_pending') }}</p>
 {% endif %}
 
 <form method="post" action="/subir" enctype="multipart/form-data" class="upload-form">
-  <label>Archivo
+  <label>{{ t('file') }}
     <input type="file" name="archivo" accept="{{ allowed_extensions }}" required>
   </label>
-  <p class="book-meta">Máximo {{ max_upload_mb }} MB por archivo. Formatos: PDF, EPUB, MOBI, AZW, AZW3, FB2, CBR, CBZ, TXT y RTF.</p>
-  <label>Título
+  <p class="book-meta">{{ t('upload_limits', mb=max_upload_mb) }}</p>
+  <label>{{ t('title') }}
     <input type="text" name="nuevo_titulo" maxlength="300" required>
   </label>
-  <label>Autor
+  <label>{{ t('author') }}
     <input type="text" name="autor" maxlength="200" required>
   </label>
-  <label>Categoría
+  <label>{{ t('category') }}
     <select name="categoria" required>
-      <option value="" disabled selected>Elige una categoría</option>
+      <option value="" disabled selected>{{ t('choose_category') }}</option>
       {% for c in categorias %}
       <option value="{{ c }}">{{ c }}</option>
       {% endfor %}
@@ -35,13 +35,13 @@
   </label>
   <label class="checkbox-label">
     <input type="checkbox" name="privado">
-    Privado (solo el propietario de la biblioteca puede verlo y descargarlo)
+    {{ t('private_hint') }}
   </label>
-  <label>Comentarios (opcional)
+  <label>{{ t('comments_optional') }}
     <textarea name="comentarios" maxlength="4000" rows="3"></textarea>
   </label>
   <button type="submit" class="button">
-    {% if user.role == 'owner' %}Subir y publicar{% else %}Enviar para aprobación{% endif %}
+    {% if user.role == 'owner' %}{{ t('upload_publish') }}{% else %}{{ t('send_approval') }}{% endif %}
   </button>
 </form>
 {% endblock %}

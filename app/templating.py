@@ -3,6 +3,8 @@ from pathlib import Path
 
 from fastapi.templating import Jinja2Templates
 
+from app import i18n
+
 
 def _compute_static_version() -> str:
     """
@@ -22,3 +24,4 @@ def _compute_static_version() -> str:
 
 templates = Jinja2Templates(directory="app/templates")
 templates.env.globals["static_version"] = _compute_static_version()
+i18n.install(templates.env)

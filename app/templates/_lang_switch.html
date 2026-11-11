@@ -1,0 +1,6 @@
+{% set here = request.url.path ~ ('?' ~ request.url.query if request.url.query else '') %}
+<nav class="lang-switch {{ extra_class|default('') }}" aria-label="{{ t('language') }}">
+  {% for code, name in LANGS.items() %}
+  <a href="/idioma/{{ code }}?next={{ here|urlencode }}" hreflang="{{ code }}" lang="{{ code }}" title="{{ name }}" {% if code == current_lang() %}aria-current="true"{% endif %}><span aria-hidden="true">{{ code|upper }}</span><span class="visually-hidden">{{ name }}</span></a>
+  {% endfor %}
+</nav>

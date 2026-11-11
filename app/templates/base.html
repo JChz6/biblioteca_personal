@@ -1,16 +1,16 @@
 <!doctype html>
-<html lang="es">
+<html lang="{{ current_lang() }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Biblioteca Personal{% endblock %}</title>
+  <title>{% block title %}{{ t('site_title') }}{% endblock %}</title>
 
   <link rel="icon" type="image/svg+xml" href="/static/library-icon.svg?v={{ static_version }}">
   <link rel="apple-touch-icon" sizes="180x180" href="/static/library-touch-icon.png?v={{ static_version }}">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Biblioteca">
-  <meta name="theme-color" content="#181816">
+  <meta name="apple-mobile-web-app-title" content="{{ t('brand') }}">
+  <meta name="theme-color" content="#1b1a19">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

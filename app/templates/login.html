@@ -1,9 +1,9 @@
 {% extends "base_auth.html" %}
-{% block title %}Iniciar sesión — Biblioteca Personal{% endblock %}
+{% block title %}{{ t('login') }} — {{ t('site_title') }}{% endblock %}
 {% block content %}
 <div class="login-box">
-  <h1>Biblioteca Personal</h1>
-  <p>Acceso solo para personas autorizadas.</p>
-  <a class="button" href="/auth/google" style="margin-top:1.25rem;">Iniciar sesión con Google</a>
+  <h1>{{ t('site_title') }}</h1>
+  <p>{{ t('login_sub') }}</p>
+  <a class="button" href="/auth/google" style="margin-top:1.25rem;">{{ t('login_google') }}</a>
 </div>
 {% endblock %}

@@ -1,18 +1,18 @@
 {% extends "base_app.html" %}
-{% block title %}Autores — Biblioteca Personal{% endblock %}
+{% block title %}{{ t('nav_authors') }} — {{ t('site_title') }}{% endblock %}
 {% block content %}
 <div class="page-header">
   <div>
-    <h1>Autores</h1>
-    <p class="page-subtitle">{{ autores|length }} autor{{ "es" if autores|length != 1 else "" }} en tu biblioteca</p>
+    <h1>{{ t('nav_authors') }}</h1>
+    <p class="page-subtitle">{{ tn('authors_count', autores|length) }}</p>
   </div>
 </div>
 
-<input type="text" id="autor-search" class="entity-search" placeholder="Buscar autor…" aria-label="Buscar autor">
+<input type="text" id="autor-search" class="entity-search" placeholder="{{ t('author_search_ph') }}" aria-label="{{ t('author_search_label') }}">
 
-<nav class="alphabet-index" aria-label="Índice de autores por letra">
+<nav class="alphabet-index" aria-label="{{ t('alpha_index') }}">
   {% for grupo in grupos_autores %}
-  <a href="#autores-{{ loop.index }}" data-author-letter="{{ loop.index }}" aria-label="Autores: {{ grupo.letra }}">{{ grupo.letra }}</a>
+  <a href="#autores-{{ loop.index }}" data-author-letter="{{ loop.index }}" aria-label="{{ t('authors_letter', letter=grupo.letra) }}">{{ grupo.letra }}</a>
   {% endfor %}
 </nav>
 <div class="entity-directory" id="autor-list">
@@ -23,17 +23,22 @@
       {% for a in grupo.autores %}
       <li><a class="entity-row" href="/?autor={{ a.nombre|urlencode }}">
         <span class="entity-name">{{ a.nombre }}</span>
-        <span class="entity-count">{{ a.total }} libro{{ "s" if a.total != 1 else "" }}</span>
+        <span class="entity-count">{{ tn('books', a.total) }}</span>
       </a></li>
       {% endfor %}
     </ul>
   </section>
-  {% else %}<p class="entity-empty">No hay autores todavía.</p>{% endfor %}
+  {% else %}<p class="entity-empty">{{ t('no_authors') }}</p>{% endfor %}
 </div>
 <p id="author-search-status" class="book-meta" role="status" aria-live="polite"></p>
 <script>
 (() => {
   const search = document.getElementById('autor-search');
+  const msg = {
+    none: {{ t('authors_none_found')|tojson }},
+    one: {{ t('authors_found_one', n='{n}')|tojson }},
+    other: {{ t('authors_found_other', n='{n}')|tojson }},
+  };
   const normalize = text => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es');
   const groups = [...document.querySelectorAll('[data-author-group]')].map(section => ({
     section,
@@ -53,7 +58,7 @@
       index.hidden = matches === 0;
       count += matches;
     });
-    document.getElementById('author-search-status').textContent = !term ? '' : count === 0 ? 'No se encontraron autores. Prueba con otro nombre.' : count + (count === 1 ? ' autor encontrado.' : ' autores encontrados.');
+    document.getElementById('author-search-status').textContent = !term ? '' : count === 0 ? msg.none : (count === 1 ? msg.one : msg.other).replace('{n}', count);
   });
 })();
 </script>

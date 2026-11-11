@@ -1,15 +1,19 @@
 ---
 name: Biblioteca Personal
-description: Charcoal editorial library with warm paper text and orange actions
+description: Japanese-vintage library — cream ink, slate blue and orange on near-black
 colors:
-  bg: "#181816"
-  surface: "#242321"
-  surface-hover: "#2c2925"
-  text: "#f4f0e9"
-  text-muted: "#b5afa7"
-  border: "#49453f"
-  accent: "#ff633b"
-  brown: "#482d22"
+  bg: "#1b1a19"
+  surface: "#252422"
+  surface-hover: "#2e2c29"
+  text: "#e8d8c9"
+  text-muted: "#ab9f93"
+  border: "#3e3b37"
+  accent: "#f3701e"
+  accent-hover: "#ff8a3d"
+  accent-deep: "#3d2414"
+  blue: "#4b607f"
+  blue-soft: "#9db0cd"
+  blue-deep: "#273140"
 typography:
   display:
     fontFamily: "Libre Caslon Text, Georgia, serif"
@@ -82,7 +86,7 @@ This document records the approved implementation in `app/static/style.css`, `ap
 
 ## Colors
 
-Primary orange (`accent`) marks the upload action, collection label, format links, selection and focus. Warm charcoal (`bg`) anchors the page; raised charcoal (`surface`) and its hover variant separate controls without strong depth. Paper (`text`) carries headings and primary copy; warm gray (`text-muted`) carries metadata. Stone (`border`) divides rows and outlines controls; brown supports orange hover states. Frontmatter is normative for these reused tokens.
+Japanese/American vintage palette (cream `#e8d8c9`, slate blue `#4b607f`, orange `#f3701e` on near-black). Orange (`accent`) is reserved for action: upload button, format links, current page, active nav underline, selection and focus; `accent-deep` is its tonal hover. Cream (`text`) is the primary ink. Slate blue is the secondary hue for wayfinding and identity: document tiles (`blue-deep` at rest, `blue` on row hover), account initial, author letter headings and the contribution note (`blue-soft`), alphabet-index hover, info banners and neutral badges. Raw `blue` is never used as text on the dark ground (2.7:1); use `blue-soft`. The header closes with a one-pixel border (a tri-colour stripe was tried and rejected by the user). Success (sage) and pending (orange on `accent-deep`) keep their semantic tints. Verified contrast: cream/bg 12.5, muted/bg 6.7, orange/bg 5.9, bg/orange 5.9, cream/blue 4.6, blue-soft/blue-deep 6.0.
 
 ## Typography
 
@@ -104,7 +108,7 @@ The system is flat: no box-shadow vocabulary. Tonal surfaces, one-pixel borders 
 
 ## Shapes
 
-Controls use gently rounded corners; pending-item cards and the library icon use a broader curve. Catalog entries remain divided rows rather than enclosed cards. Circular account initials are confined to the header.
+Controls use 10px corners; popovers, pending cards and table cards use an 18px curve echoing the palette's rounded color blocks. Catalog entries remain divided rows rather than enclosed cards. Circular account initials are confined to the header.
 
 ## Components
 

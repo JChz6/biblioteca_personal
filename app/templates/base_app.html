@@ -1,18 +1,20 @@
 {% extends "base.html" %}
 {% block body %}
-<a class="skip-link" href="#contenido">Saltar al contenido</a>
+<a class="skip-link" href="#contenido">{{ t('skip') }}</a>
 <header class="site-header" id="site-header">
   <div class="header-inner">
-    <a class="brand" href="/" aria-label="Biblioteca, inicio"><img src="/static/library-icon.svg?v={{ static_version }}" alt="" class="brand-mark"><span>Biblioteca</span></a>
-    <button class="menu-toggle icon-button" id="menu-toggle" type="button" aria-label="Abrir menú" aria-expanded="false" aria-controls="site-nav"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
-    <nav class="site-nav" id="site-nav" aria-label="Navegación principal">
-      {% for path, label in [('/', 'Catálogo'), ('/autores', 'Autores'), ('/categorias', 'Categorías'), ('/subir', 'Subir')] %}
+    <a class="brand" href="/" aria-label="{{ t('brand_home') }}"><img src="/static/library-icon.svg?v={{ static_version }}" alt="" class="brand-mark"><span>{{ t('brand') }}</span></a>
+    <button class="menu-toggle icon-button" id="menu-toggle" type="button" aria-label="{{ t('menu_open') }}" data-label-open="{{ t('menu_open') }}" data-label-close="{{ t('menu_close') }}" aria-expanded="false" aria-controls="site-nav"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+    <nav class="site-nav" id="site-nav" aria-label="{{ t('nav_main') }}">
+      {% for path, label in [('/', t('nav_catalog')), ('/autores', t('nav_authors')), ('/categorias', t('nav_categories')), ('/subir', t('nav_upload'))] %}
       <a href="{{ path }}" {% if request.url.path == path %}class="active" aria-current="page"{% endif %}>{{ label }}</a>
       {% endfor %}
-      {% if user.role == 'owner' %}<a href="/panel" {% if request.url.path == '/panel' %}class="active" aria-current="page"{% endif %}>Panel</a>{% endif %}
-      <form method="post" action="/logout" class="mobile-logout"><button type="submit" class="text-button">Cerrar sesión</button></form>
+      {% if user.role == 'owner' %}<a href="/panel" {% if request.url.path == '/panel' %}class="active" aria-current="page"{% endif %}>{{ t('nav_panel') }}</a>{% endif %}
+      {% with extra_class='lang-switch-mobile' %}{% include '_lang_switch.html' %}{% endwith %}
+      <form method="post" action="/logout" class="mobile-logout"><button type="submit" class="text-button">{{ t('logout') }}</button></form>
     </nav>
-    <details class="account-menu"><summary aria-label="Cuenta de {{ user.email }}"><span class="user-avatar">{{ user.email[0]|upper }}</span></summary><div class="account-popover"><p>{{ user.email }}</p><form method="post" action="/logout"><button type="submit" class="button-ghost">Cerrar sesión</button></form></div></details>
+    {% with extra_class='lang-switch-desktop' %}{% include '_lang_switch.html' %}{% endwith %}
+    <details class="account-menu"><summary aria-label="{{ t('account_of', email=user.email) }}"><span class="user-avatar">{{ user.email[0]|upper }}</span></summary><div class="account-popover"><p>{{ user.email }}</p><form method="post" action="/logout"><button type="submit" class="button-ghost">{{ t('logout') }}</button></form></div></details>
   </div>
 </header>
 <main class="main-inner" id="contenido" tabindex="-1">{% block content %}{% endblock %}</main>

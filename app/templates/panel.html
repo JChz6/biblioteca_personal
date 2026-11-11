@@ -1,28 +1,28 @@
 {% extends "base_app.html" %}
-{% block title %}Panel — Biblioteca Personal{% endblock %}
+{% block title %}{{ t('nav_panel') }} — {{ t('site_title') }}{% endblock %}
 {% block content %}
 <div class="page-header">
   <div>
-    <h1>Panel de administración</h1>
-    <p class="page-subtitle">Aprobaciones, personas autorizadas y categorías</p>
+    <h1>{{ t('panel_h1') }}</h1>
+    <p class="page-subtitle">{{ t('panel_sub') }}</p>
   </div>
 </div>
 
 {% if publicaciones %}
 <section>
-  <h2>Tus publicaciones</h2>
+  <h2>{{ t('your_publications') }}</h2>
   {% for p in publicaciones %}
   <div class="pending-card">
     <p><strong>{{ p.nuevo_titulo }}</strong> —
-      {% if p.status == 'procesando' %}Publicando. Actualiza esta página en unos momentos.
-      {% else %}No se pudo completar la publicación. El archivo se conserva para reintentar.{% endif %}
+      {% if p.status == 'procesando' %}{{ t('publishing') }}
+      {% else %}{{ t('publish_failed') }}{% endif %}
     </p>
     {% if p.status == 'error_publicacion' %}
     <form method="post" action="/panel/{{ p.id }}/reintentar">
-      <button type="submit" class="button-small">Reintentar publicación</button>
+      <button type="submit" class="button-small">{{ t('retry_publish') }}</button>
     </form>
     <form method="post" action="/panel/{{ p.id }}/rechazar">
-      <button type="submit" class="button-danger">Descartar archivo</button>
+      <button type="submit" class="button-danger">{{ t('discard_file') }}</button>
     </form>
     {% endif %}
   </div>
@@ -31,22 +31,22 @@
 {% endif %}
 
 <section>
-  <h2>Pendientes de aprobación <span class="badge badge-pendiente">{{ pendientes|length }}</span></h2>
+  <h2>{{ t('pending_approval') }} <span class="badge badge-pendiente">{{ pendientes|length }}</span></h2>
   {% for p in pendientes %}
   <div class="pending-card">
     <p class="pending-meta">
-      Subido por <strong>{{ p.uploader_email }}</strong> el {{ p.created_at.strftime('%Y-%m-%d %H:%M') }} —
-      <a href="/panel/{{ p.id }}/archivo" target="_blank">ver/descargar archivo original</a>
+      {{ t('uploaded_by') }} <strong>{{ p.uploader_email }}</strong> {{ t('uploaded_on') }} {{ p.created_at.strftime('%Y-%m-%d %H:%M') }} —
+      <a href="/panel/{{ p.id }}/archivo" target="_blank">{{ t('view_original') }}</a>
       ({{ p.titulo_original }}{{ p.extension }})
     </p>
     <form method="post" action="/panel/{{ p.id }}/aprobar" class="pending-form">
-      <label>Título
+      <label>{{ t('title') }}
         <input type="text" name="nuevo_titulo" value="{{ p.nuevo_titulo }}" required>
       </label>
-      <label>Autor
+      <label>{{ t('author') }}
         <input type="text" name="autor" value="{{ p.autor }}" required>
       </label>
-      <label>Categoría
+      <label>{{ t('category') }}
         <select name="categoria" required>
           {% for c in categorias %}
           <option value="{{ c }}" {% if c == p.categoria %}selected{% endif %}>{{ c }}</option>
@@ -55,49 +55,49 @@
       </label>
       <label class="checkbox-label">
         <input type="checkbox" name="privado" {% if p.privado %}checked{% endif %}>
-        Privado
+        {{ t('private') }}
       </label>
-      <label>Comentarios
+      <label>{{ t('comments') }}
         <textarea name="comentarios" rows="2">{{ p.comentarios }}</textarea>
       </label>
       <div class="pending-actions">
-        <button type="submit" class="button">Aprobar y publicar</button>
+        <button type="submit" class="button">{{ t('approve_publish') }}</button>
       </div>
     </form>
     <form method="post" action="/panel/{{ p.id }}/rechazar" class="pending-form reject-form">
-      <input type="text" name="motivo" placeholder="Motivo del rechazo (opcional)">
-      <button type="submit" class="button-danger">Rechazar</button>
+      <input type="text" name="motivo" placeholder="{{ t('reject_reason') }}">
+      <button type="submit" class="button-danger">{{ t('reject') }}</button>
     </form>
   </div>
   {% else %}
-  <p class="result-count">No hay libros pendientes.</p>
+  <p class="result-count">{{ t('no_pending') }}</p>
   {% endfor %}
 </section>
 
 <section>
-  <h2>Personas autorizadas</h2>
+  <h2>{{ t('authorized_people') }}</h2>
   <div class="table-card">
     <div class="table-scroll">
     <table class="book-table">
-      <thead><tr><th>Email</th><th>Rol</th><th>Estado</th><th></th></tr></thead>
+      <thead><tr><th>{{ t('email') }}</th><th>{{ t('role') }}</th><th>{{ t('status') }}</th><th></th></tr></thead>
       <tbody>
         {% for u in usuarios %}
         <tr>
           <td>{{ u.email }}</td>
           <td class="book-meta">{{ u.role }}</td>
           <td>
-            {% if u.active %}<span class="badge badge-aprobado">Activo</span>
-            {% else %}<span class="badge badge-privado">Desactivado</span>{% endif %}
+            {% if u.active %}<span class="badge badge-aprobado">{{ t('active') }}</span>
+            {% else %}<span class="badge badge-privado">{{ t('deactivated') }}</span>{% endif %}
           </td>
           <td>
             {% if u.role != 'owner' %}
             {% if u.active %}
             <form method="post" action="/panel/usuarios/{{ u.email }}/desactivar">
-              <button type="submit" class="button-small">Desactivar</button>
+              <button type="submit" class="button-small">{{ t('deactivate') }}</button>
             </form>
             {% else %}
             <form method="post" action="/panel/usuarios/{{ u.email }}/reactivar">
-              <button type="submit" class="button-small">Reactivar</button>
+              <button type="submit" class="button-small">{{ t('reactivate') }}</button>
             </form>
             {% endif %}
             {% endif %}
@@ -109,18 +109,18 @@
     </div>
   </div>
   <form method="post" action="/panel/usuarios/agregar" class="inline-form">
-    <input type="email" name="email" placeholder="email@ejemplo.com" required>
-    <input type="text" name="display_name" placeholder="Nombre (opcional)">
-    <button type="submit" class="button-small">Agregar amigo</button>
+    <input type="email" name="email" placeholder="{{ t('email_ph') }}" required>
+    <input type="text" name="display_name" placeholder="{{ t('name_optional') }}">
+    <button type="submit" class="button-small">{{ t('add_friend') }}</button>
   </form>
 </section>
 
 <section>
-  <h2>Categorías</h2>
+  <h2>{{ t('nav_categories') }}</h2>
   <p class="book-meta">{{ categorias|join(", ") }}</p>
   <form method="post" action="/panel/categorias/agregar" class="inline-form">
-    <input type="text" name="nombre" placeholder="Nueva categoría" required>
-    <button type="submit" class="button-small">Agregar categoría</button>
+    <input type="text" name="nombre" placeholder="{{ t('new_category') }}" required>
+    <button type="submit" class="button-small">{{ t('add_category') }}</button>
   </form>
 </section>
 {% endblock %}
