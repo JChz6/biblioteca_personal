@@ -7,7 +7,7 @@ El acceso se controla con un token secreto en la ruta (/k/<TOKEN>/).
 
 Rutas:
   GET /k/<TOKEN>/            lista paginada (?p=2, ?l=A, ?q=texto), más recientes primero
-  GET /k/<TOKEN>/d/<id>      302 a una URL firmada V4 de GCS (caducidad corta)
+  GET /k/<TOKEN>/d/<id>      302 a una URL firmada V4 de GCS, o streaming si KOBO_DOWNLOAD_MODE=proxy
   GET /robots.txt            bloquea todo
   todo lo demás              404 genérico
 """
@@ -21,18 +21,18 @@ from collections import deque
 from datetime import timedelta
 from functools import lru_cache
 from html import escape
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import urlencode
 
 from cachetools import TTLCache
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse, Response, StreamingResponse
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.bigquery.catalogo import agrupar_por_obra, get_by_id, get_catalogo, listar_catalogo, ordenar_grupos
 from app.config import get_settings
-from app.gcs.storage import get_storage_client
+from app.gcs.storage import get_storage_client, stream_blob
 from app.text_utils import alphabetical_key, initial_letter
 
 log = logging.getLogger(__name__)
@@ -44,6 +44,9 @@ class KoboSettings(BaseSettings):
     # 32 bytes aleatorios como mínimo: 64 caracteres hex o 43 base64url.
     kobo_token: str = Field(min_length=43)
     kobo_signed_url_minutes: int = Field(default=15, ge=1, le=60)
+    # redirect: 302 a URL firmada de GCS (no pasa por el homelab).
+    # proxy: el archivo pasa por este servicio y Cloudflare (por si el Kobo descarga mal desde Google).
+    kobo_download_mode: Literal["redirect", "proxy"] = "redirect"
     kobo_page_size: int = Field(default=20, ge=5, le=50)
     # Rate limit por IP: N respuestas 404 dentro de la ventana bloquean esa IP (429).
     kobo_max_failures: int = Field(default=20, ge=1)
@@ -355,12 +358,23 @@ def descargar(token: str, book_id: str) -> Response:
     libro = _libro_descargable(book_id)
     if libro is None:
         return _not_found()
-    blob = get_storage_client().bucket(get_settings().gcs_bucket).blob(_blob_path(libro["uri_gcs"]))
+    bucket = get_storage_client().bucket(get_settings().gcs_bucket)
+    content_type = CONTENT_TYPES[_extension(libro)]
+    disposition = f'attachment; filename="{ascii_filename(libro)}"'
+    if get_kobo_settings().kobo_download_mode == "proxy":
+        blob = bucket.get_blob(_blob_path(libro["uri_gcs"]))
+        if blob is None:
+            return _not_found()
+        headers = {"Content-Disposition": disposition}
+        if blob.size is not None:
+            headers["Content-Length"] = str(blob.size)
+        return StreamingResponse(stream_blob(libro["uri_gcs"]), media_type=content_type, headers=headers)
+    blob = bucket.blob(_blob_path(libro["uri_gcs"]))
     url = blob.generate_signed_url(
         version="v4",
         expiration=timedelta(minutes=get_kobo_settings().kobo_signed_url_minutes),
         method="GET",
-        response_disposition=f'attachment; filename="{ascii_filename(libro)}"',
-        response_type=CONTENT_TYPES[_extension(libro)],
+        response_disposition=disposition,
+        response_type=content_type,
     )
     return RedirectResponse(url, status_code=302)

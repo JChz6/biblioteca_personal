@@ -133,6 +133,23 @@ class KoboTests(unittest.TestCase):
         self.assertEqual(kw['response_type'], 'application/epub+zip')
         self.assertEqual(kw['response_disposition'], 'attachment; filename="Cien anos soledad - Garcia Marquez.epub"')
 
+    def test_proxy_mode_streams_through_service(self):
+        os.environ['KOBO_DOWNLOAD_MODE'] = 'proxy'
+        kobo.get_kobo_settings.cache_clear()
+        try:
+            gcs_blob = SimpleNamespace(size=7)
+            kobo.get_storage_client.return_value.bucket.return_value.get_blob.return_value = gcs_blob
+            with patch('app.kobo.main.stream_blob', return_value=iter([b'abc', b'defg'])):
+                r = self.c.get(f'/k/{TOKEN}/d/pub1', follow_redirects=False)
+            self.assertEqual(r.status_code, 200)
+            self.assertEqual(r.content, b'abcdefg')
+            self.assertEqual(r.headers['content-length'], '7')
+            self.assertEqual(r.headers['content-type'], 'application/epub+zip')
+            self.assertEqual(r.headers['content-disposition'], 'attachment; filename="Cien anos soledad - Garcia Marquez.epub"')
+            self.blob.generate_signed_url.assert_not_called()
+        finally:
+            del os.environ['KOBO_DOWNLOAD_MODE']
+
     def test_private_and_mobi_downloadable_unsupported_not(self):
         self.assertEqual(self.c.get(f'/k/{TOKEN}/d/priv1', follow_redirects=False).status_code, 302)
         self.assertEqual(self.c.get(f'/k/{TOKEN}/d/mobi1', follow_redirects=False).status_code, 302)
