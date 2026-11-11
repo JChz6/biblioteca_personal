@@ -13,6 +13,21 @@ services:
     networks:
       - biblioteca_net
 
+  # Servicio de solo lectura para el Kobo (kobo.tudominio.com). Misma imagen, otro
+  # entrypoint: no monta login, subidas ni panel. Necesita KOBO_TOKEN en .env.
+  kobo:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    command: ["uvicorn", "app.kobo.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/service_account.json
+      - CATALOG_CACHE_TTL_SECONDS=300
+    volumes:
+      - ./service_account.json:/app/service_account.json:ro
+    networks:
+      - biblioteca_net
+
   cloudflared:
     image: cloudflare/cloudflared:latest
     restart: unless-stopped
