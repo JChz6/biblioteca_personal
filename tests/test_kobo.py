@@ -2,6 +2,8 @@ import logging
 import os
 import tempfile
 import unittest
+from datetime import datetime
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 _TMP = tempfile.TemporaryDirectory()
@@ -14,42 +16,103 @@ from fastapi.testclient import TestClient
 
 from app.kobo import main as kobo
 
+
+def row(id, titulo, autor='Autor', ext='.epub', privado=False, fecha=datetime(2025, 1, 1)):
+    return {'id': id, 'nuevo_titulo': titulo, 'autor': autor, 'extension': ext, 'privado': privado,
+            'uri_gcs': f'gs://biblioteca_personal/x/{id}{ext}', 'fecha_modificacion': fecha}
+
+
 ROWS = [
-    {'id': 'pub1', 'nuevo_titulo': 'Cien años: soledad', 'autor': 'García Márquez', 'extension': '.epub',
-     'privado': False, 'uri_gcs': 'gs://biblioteca_personal/a/b.epub'},
-    {'id': 'priv1', 'nuevo_titulo': 'Secreto', 'autor': 'X', 'extension': '.epub',
-     'privado': True, 'uri_gcs': 'gs://biblioteca_personal/s.epub'},
-    {'id': 'mobi1', 'nuevo_titulo': 'Mobi', 'autor': 'Y', 'extension': '.mobi',
-     'privado': False, 'uri_gcs': 'gs://biblioteca_personal/m.mobi'},
+    row('pub1', 'Cien años: soledad', 'García Márquez', fecha=datetime(2024, 1, 1)),
+    row('pub1pdf', 'Cien años: soledad', 'García Márquez', ext='.pdf', fecha=datetime(2024, 1, 1)),
+    row('priv1', 'Secreto', 'X', privado=True, fecha=datetime(2026, 5, 1)),
+    row('mobi1', 'Mobi', 'Y', ext='.mobi', fecha=datetime(2025, 6, 1)),
+    row('fb21', 'Solo FB2', 'Z', ext='.fb2', fecha=datetime(2026, 9, 1)),
+    row('nuevo', 'Árbol nuevo', 'W', fecha=datetime(2026, 10, 1)),
 ]
 
 
 class KoboTests(unittest.TestCase):
     def setUp(self):
         kobo._failures.clear()
+        kobo._sizes.clear()
         kobo.get_kobo_settings.cache_clear()
-        patch('app.bigquery.catalogo.get_catalogo', return_value=ROWS).start()
-        patch('app.kobo.main.get_catalogo', return_value=ROWS).start()
+        self.rows = list(ROWS)
+        patch('app.bigquery.catalogo.get_catalogo', side_effect=lambda: self.rows).start()
+        patch('app.kobo.main.get_catalogo', side_effect=lambda: self.rows).start()
         self.blob = MagicMock()
         self.blob.generate_signed_url.return_value = 'https://storage.googleapis.com/x?X-Goog-Signature=abc'
         client = MagicMock()
         client.bucket.return_value.blob.return_value = self.blob
+        client.list_blobs.return_value = [SimpleNamespace(name='x/pub1.epub', size=1_234_567),
+                                          SimpleNamespace(name='x/pub1pdf.pdf', size=45_000)]
         patch('app.kobo.main.get_storage_client', return_value=client).start()
         self.addCleanup(patch.stopall)
         self.c = TestClient(kobo.app, raise_server_exceptions=False)
 
-    def test_valid_token_page(self):
-        r = self.c.get(f'/k/{TOKEN}/')
+    def get_list(self, qs=''):
+        r = self.c.get(f'/k/{TOKEN}/{qs}')
         self.assertEqual(r.status_code, 200)
+        return r.text
+
+    def test_list_basics(self):
+        r = self.c.get(f'/k/{TOKEN}/')
         self.assertIn('Cien años', r.text)
-        self.assertIn('href="d/pub1"', r.text)
         self.assertNotIn('<script', r.text)
+        self.assertNotIn('<img', r.text)
         self.assertEqual(r.headers['referrer-policy'], 'no-referrer')
         self.assertIn('noindex', r.headers['x-robots-tag'])
+        self.assertLess(len(r.content), 20_000)
+
+    def test_order_newest_first_includes_private_and_mobi_hides_unsupported(self):
+        html = self.get_list()
+        positions = [html.index(t) for t in ('Árbol nuevo', 'Secreto', 'Mobi', 'Cien años')]
+        self.assertEqual(positions, sorted(positions))
+        self.assertNotIn('Solo FB2', html)
+
+    def test_formats_grouped_epub_first_with_sizes(self):
+        html = self.get_list()
+        epub = html.index('href="d/pub1"')
+        pdf = html.index('href="d/pub1pdf"')
+        self.assertLess(epub, pdf)
+        self.assertIn('EPUB &middot; 1,2 MB', html)
+        self.assertIn('PDF &middot; 45 KB', html)
+        self.assertEqual(html.count('Cien años'), 1)
+
+    def test_letter_filter_and_index(self):
+        html = self.get_list('?l=A')
+        self.assertIn('Árbol nuevo', html)
+        self.assertNotIn('Cien años', html)
+        self.assertIn('href="?l=C"', html)
+        self.assertNotIn('href="?l=B"', html)  # sin libros con B, no hay enlace
+
+    def test_search(self):
+        html = self.get_list('?q=marquez')
+        self.assertIn('Cien años', html)
+        self.assertNotIn('Secreto', html)
+
+    def test_pagination(self):
+        self.rows = [row(f'b{i:03}', f'Libro {i:03}', fecha=datetime(2020, 1, 1, 0, i)) for i in range(45)]
+        p1 = self.get_list()
+        self.assertIn('1 / 3', p1)
+        self.assertIn('href="?p=2"', p1)
+        self.assertNotIn('Anterior', p1)
+        self.assertIn('Libro 044', p1)
+        p3 = self.get_list('?p=3')
+        self.assertIn('Libro 000', p3)
+        self.assertIn('href="./"', p3)
+        self.assertNotIn('Siguiente', p3)
+        self.assertIn('3 / 3', self.get_list('?p=99'))
+        self.assertIn('1 / 3', self.get_list('?p=abc'))
+
+    def test_list_without_bucket_sizes(self):
+        kobo.get_storage_client.return_value.list_blobs.side_effect = RuntimeError('boom')
+        html = self.get_list()
+        self.assertIn('Descargar EPUB</a>', html)
 
     def test_generic_404s(self):
         for path in ['/', f'/k/{TOKEN[:-1]}b/', f'/k/{TOKEN}', '/k/x/', '/login', '/subir', '/docs',
-                     '/openapi.json', f'/k/x/d/pub1']:
+                     '/openapi.json', '/k/x/d/pub1', f'/k/{TOKEN}/p/pub1']:
             r = self.c.get(path, follow_redirects=False)
             self.assertEqual(r.status_code, 404, path)
             self.assertEqual(r.text, 'Not Found', path)
@@ -70,9 +133,11 @@ class KoboTests(unittest.TestCase):
         self.assertEqual(kw['response_type'], 'application/epub+zip')
         self.assertEqual(kw['response_disposition'], 'attachment; filename="Cien anos soledad - Garcia Marquez.epub"')
 
-    def test_private_and_unsupported_not_downloadable(self):
-        self.assertEqual(self.c.get(f'/k/{TOKEN}/d/priv1', follow_redirects=False).status_code, 404)
-        self.assertEqual(self.c.get(f'/k/{TOKEN}/d/mobi1', follow_redirects=False).status_code, 404)
+    def test_private_and_mobi_downloadable_unsupported_not(self):
+        self.assertEqual(self.c.get(f'/k/{TOKEN}/d/priv1', follow_redirects=False).status_code, 302)
+        self.assertEqual(self.c.get(f'/k/{TOKEN}/d/mobi1', follow_redirects=False).status_code, 302)
+        self.assertEqual(self.blob.generate_signed_url.call_args.kwargs['response_type'], 'application/x-mobipocket-ebook')
+        self.assertEqual(self.c.get(f'/k/{TOKEN}/d/fb21', follow_redirects=False).status_code, 404)
 
     def test_rate_limit_blocks_after_failures(self):
         os.environ['KOBO_MAX_FAILURES'] = '3'

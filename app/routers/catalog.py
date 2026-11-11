@@ -1,5 +1,4 @@
 import math
-import unicodedata
 
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
@@ -9,25 +8,12 @@ from app.bigquery.catalogo import agrupar_por_obra, contar_por_autor, contar_por
 from app.db.models import Categoria, User
 from app.db.session import get_db
 from app.templating import templates
+from app.text_utils import alphabetical_key as _alphabetical_key, initial_letter as _author_initial
 
 router = APIRouter()
 
 PAGE_SIZE = 24
 ORDEN_VALIDOS = {"titulo", "autor", "fecha"}
-
-
-def _alphabetical_key(name: str) -> str:
-    # Spanish ordering: ignore accents, but retain Ñ after N.
-    return "".join(char for char in unicodedata.normalize("NFD", name.strip().casefold().replace("ñ", "n~"))
-                   if not unicodedata.combining(char))
-
-
-def _author_initial(name: str) -> str:
-    initial = name.strip()[:1].upper()
-    if initial == "Ñ":
-        return initial
-    initial = _alphabetical_key(initial).upper()
-    return initial if len(initial) == 1 and "A" <= initial <= "Z" else "#"
 
 
 def _pagination_window(current: int, total: int, radius: int = 2) -> list[int | None]:

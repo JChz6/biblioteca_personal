@@ -1,4 +1,5 @@
 import re
+import unicodedata
 
 # Siglas que deben preservarse en mayúsculas sin importar su posición en el título.
 # Extender esta lista a mano cuando aparezca una sigla nueva.
@@ -56,3 +57,18 @@ def normalizar_titulo(titulo: str) -> str:
                 palabras.append(palabra.lower())
         resultado.append(_capitalizar_primera_letra(" ".join(palabras)))
     return "".join(resultado)
+
+
+def alphabetical_key(name: str) -> str:
+    # Spanish ordering: ignore accents, but retain Ñ after N.
+    return "".join(char for char in unicodedata.normalize("NFD", name.strip().casefold().replace("ñ", "n~"))
+                   if not unicodedata.combining(char))
+
+
+def initial_letter(name: str) -> str:
+    """Letra del índice alfabético (A–Z, Ñ) o "#" para todo lo demás."""
+    initial = name.strip()[:1].upper()
+    if initial == "Ñ":
+        return initial
+    initial = alphabetical_key(initial).upper()
+    return initial if len(initial) == 1 and "A" <= initial <= "Z" else "#"

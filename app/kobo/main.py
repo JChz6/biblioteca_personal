@@ -5,11 +5,15 @@ Corre como proceso/contenedor aparte de la app principal: no monta login,
 subidas ni panel, así que esas rutas simplemente no existen en kobo.
 El acceso se controla con un token secreto en la ruta (/k/<TOKEN>/).
 
-Fase 0: solo una página de prueba con un EPUB, descargable por dos vías
-(302 a URL firmada de GCS, o en streaming a través de este servidor).
+Rutas:
+  GET /k/<TOKEN>/            lista paginada (?p=2, ?l=A, ?q=texto), más recientes primero
+  GET /k/<TOKEN>/d/<id>      302 a una URL firmada V4 de GCS (caducidad corta)
+  GET /robots.txt            bloquea todo
+  todo lo demás              404 genérico
 """
 import hmac
 import logging
+import math
 import re
 import time
 import unicodedata
@@ -17,15 +21,21 @@ from collections import deque
 from datetime import timedelta
 from functools import lru_cache
 from html import escape
+from typing import Any
+from urllib.parse import urlencode
 
+from cachetools import TTLCache
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse, Response, StreamingResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse, Response
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from app.bigquery.catalogo import get_by_id, get_catalogo
+from app.bigquery.catalogo import agrupar_por_obra, get_by_id, get_catalogo, listar_catalogo, ordenar_grupos
 from app.config import get_settings
-from app.gcs.storage import get_storage_client, stream_blob
+from app.gcs.storage import get_storage_client
+from app.text_utils import alphabetical_key, initial_letter
+
+log = logging.getLogger(__name__)
 
 
 class KoboSettings(BaseSettings):
@@ -34,10 +44,11 @@ class KoboSettings(BaseSettings):
     # 32 bytes aleatorios como mínimo: 64 caracteres hex o 43 base64url.
     kobo_token: str = Field(min_length=43)
     kobo_signed_url_minutes: int = Field(default=15, ge=1, le=60)
-    kobo_test_book_id: str = ""
+    kobo_page_size: int = Field(default=20, ge=5, le=50)
     # Rate limit por IP: N respuestas 404 dentro de la ventana bloquean esa IP (429).
     kobo_max_failures: int = Field(default=20, ge=1)
     kobo_failure_window_seconds: int = Field(default=600, ge=10)
+    kobo_sizes_cache_seconds: int = Field(default=300, ge=0)
 
 
 @lru_cache
@@ -45,12 +56,18 @@ def get_kobo_settings() -> KoboSettings:
     return KoboSettings()
 
 
+# Orden = prioridad del botón dentro de cada obra (EPUB primero).
 CONTENT_TYPES = {
     ".epub": "application/epub+zip",
     ".kepub": "application/epub+zip",
     ".pdf": "application/pdf",
     ".cbz": "application/vnd.comicbook+zip",
+    ".cbr": "application/vnd.comicbook-rar",
+    ".mobi": "application/x-mobipocket-ebook",
+    ".txt": "text/plain",
+    ".rtf": "application/rtf",
 }
+_FORMAT_RANK = {ext.lstrip("."): i for i, ext in enumerate(CONTENT_TYPES)}
 
 SECURITY_HEADERS = {
     "Referrer-Policy": "no-referrer",
@@ -153,14 +170,7 @@ def _token_ok(token: str) -> bool:
     return hmac.compare_digest(token.encode(), expected)
 
 
-def ascii_filename(libro: dict) -> str:
-    """Nombre ASCII puro: el navegador del Kobo es viejo y no confiamos en filename*=UTF-8."""
-    base = f"{libro.get('nuevo_titulo') or 'libro'} - {libro.get('autor') or ''}".strip(" -")
-    base = unicodedata.normalize("NFKD", base).encode("ascii", "ignore").decode("ascii")
-    base = re.sub(r"[^A-Za-z0-9 .,()'_-]+", "", base)
-    base = re.sub(r"\s+", " ", base).strip(" .") or "libro"
-    return base[:120] + _extension(libro)
-
+# --- Datos -----------------------------------------------------------------
 
 def _extension(libro: dict) -> str:
     return (libro.get("extension") or "").lower()
@@ -170,20 +180,69 @@ def _blob_path(uri_gcs: str) -> str:
     return uri_gcs.replace(f"gs://{get_settings().gcs_bucket}/", "", 1)
 
 
+def ascii_filename(libro: dict) -> str:
+    """Nombre ASCII puro: el navegador del Kobo es viejo y no confiamos en filename*=UTF-8."""
+    base = f"{libro.get('nuevo_titulo') or 'libro'} - {libro.get('autor') or ''}".strip(" -")
+    base = unicodedata.normalize("NFKD", base).encode("ascii", "ignore").decode("ascii")
+    base = re.sub(r"[^A-Za-z0-9 .,()'_-]+", "", base)
+    base = re.sub(r"\s+", " ", base).strip(" .") or "libro"
+    return base[:120] + _extension(libro)
+
+
+_sizes: TTLCache = TTLCache(maxsize=1, ttl=1)
+
+
+def _blob_sizes() -> dict[str, int]:
+    """Tamaño de cada blob del bucket (el catálogo no lo guarda). Un solo listado, cacheado."""
+    global _sizes
+    ttl = get_kobo_settings().kobo_sizes_cache_seconds
+    if _sizes.ttl != ttl:
+        _sizes = TTLCache(maxsize=1, ttl=max(ttl, 1))
+    if "all" not in _sizes:
+        try:
+            bucket = get_settings().gcs_bucket
+            _sizes["all"] = {b.name: b.size for b in get_storage_client().list_blobs(bucket) if b.size is not None}
+        except Exception:
+            log.exception("No se pudo listar el bucket; la lista se muestra sin tamaños")
+            return {}
+    return _sizes["all"]
+
+
+def _human_size(n: int | None) -> str:
+    if n is None:
+        return ""
+    if n < 1_000_000:
+        return f"{max(1, round(n / 1000))} KB"
+    return f"{n / 1_000_000:.1f} MB".replace(".", ",")
+
+
+def _fold(s: str | None) -> str:
+    s = unicodedata.normalize("NFKD", (s or "").casefold())
+    return "".join(c for c in s if not unicodedata.combining(c))
+
+
+def _obras(q: str) -> list[dict[str, Any]]:
+    """Obras con al menos un formato legible en el Kobo, más recientes primero (igual que "Recientes" en la web)."""
+    rows = listar_catalogo(incluir_privados=True)
+    rows = [r for r in rows if r.get("uri_gcs") and _extension(r) in CONTENT_TYPES]
+    if q:
+        # Sin acentos ni mayúsculas: escribir "á" en el teclado del Kobo es lento.
+        needle = _fold(q)
+        rows = [r for r in rows if needle in _fold(r.get("nuevo_titulo")) or needle in _fold(r.get("autor"))]
+    grupos = ordenar_grupos(agrupar_por_obra(rows), "fecha")
+    for g in grupos:
+        g["formatos"].sort(key=lambda f: _FORMAT_RANK.get(f["extension"].lower(), 99))
+    return grupos
+
+
 def _libro_descargable(book_id: str) -> dict | None:
-    libro = get_by_id(book_id, incluir_privados=False)
+    libro = get_by_id(book_id, incluir_privados=True)
     if libro is None or not libro.get("uri_gcs") or _extension(libro) not in CONTENT_TYPES:
         return None
     return libro
 
 
-def _test_book() -> dict | None:
-    book_id = get_kobo_settings().kobo_test_book_id
-    if book_id:
-        return _libro_descargable(book_id)
-    epubs = [r for r in get_catalogo() if not r.get("privado") and r.get("uri_gcs") and _extension(r) == ".epub"]
-    return min(epubs, key=lambda r: (r.get("nuevo_titulo") or "").lower(), default=None)
-
+# --- HTML ------------------------------------------------------------------
 
 PAGE = """<!DOCTYPE html>
 <html><head><meta charset="utf-8">
@@ -191,15 +250,88 @@ PAGE = """<!DOCTYPE html>
 <meta name="robots" content="noindex,nofollow">
 <title>Mis libros</title>
 <style>
-body{{background:#fff;color:#000;font-family:serif;font-size:22px;margin:12px}}
-h1{{font-size:26px;margin:0 0 12px}}
-a.b{{display:block;border:2px solid #000;padding:16px;margin:0 0 16px;min-height:56px;color:#000;text-decoration:none;font-weight:bold}}
-p{{margin:0 0 12px}}
-small{{font-size:16px}}
+body{{background:#fff;color:#000;font-family:serif;font-size:22px;line-height:1.3;margin:10px}}
+a{{color:#000}}
+h1{{font-size:26px;margin:0 0 8px}}
+.ix a{{display:inline-block;min-width:44px;padding:10px 0;text-align:center;font-size:22px;text-decoration:none;border:1px solid #000;margin:0 2px 4px 0}}
+.ix a.on{{background:#000;color:#fff}}
+form{{margin:8px 0}}
+input{{font-size:22px;padding:8px;border:2px solid #000;width:60%}}
+button{{font-size:22px;padding:8px 14px;border:2px solid #000;background:#fff}}
+.r{{border-top:2px solid #000;padding:10px 0;min-height:56px}}
+.t{{font-weight:bold;font-size:23px}}
+.a{{font-size:20px}}
+.f a{{display:inline-block;min-height:30px;padding:12px 14px;margin:6px 8px 0 0;border:2px solid #000;text-decoration:none;font-size:20px;font-weight:bold}}
+.nav{{border-top:2px solid #000;padding:12px 0;font-size:22px}}
+.nav a{{display:inline-block;padding:14px 18px;border:2px solid #000;text-decoration:none;font-weight:bold}}
+.nav span{{padding:0 10px}}
 </style></head><body>
 {body}
 </body></html>"""
 
+
+def _qs(**params) -> str:
+    clean = {k: v for k, v in params.items() if v not in (None, "", 1)}
+    return "?" + urlencode(clean) if clean else "./"
+
+
+def _parse_page(raw: str | None) -> int:
+    try:
+        return max(1, int(raw or 1))
+    except ValueError:
+        return 1
+
+
+def render_lista(grupos_todos: list[dict], letra: str, q: str, page: int) -> str:
+    size = get_kobo_settings().kobo_page_size
+    sizes = _blob_sizes()
+    por_id = {r["id"]: r for r in get_catalogo()}
+
+    letras_con_libros = {initial_letter(g.get("nuevo_titulo") or "") for g in grupos_todos}
+    grupos = [g for g in grupos_todos if initial_letter(g.get("nuevo_titulo") or "") == letra] if letra else grupos_todos
+
+    total = len(grupos)
+    pages = max(1, math.ceil(total / size))
+    page = min(page, pages)
+    visibles = grupos[(page - 1) * size: page * size]
+
+    out = [f"<h1>Mis libros <small>({total})</small></h1>"]
+
+    letras = sorted(letras_con_libros, key=lambda x: (x == "#", alphabetical_key(x)))
+    ix = [f'<a href="./"{" class=on" if not letra else ""}>Todos</a>']
+    for x in letras:
+        cls = ' class="on"' if x == letra else ""
+        ix.append(f'<a href="{escape(_qs(l=x))}"{cls}>{escape(x)}</a>')
+    out.append('<div class="ix">' + "".join(ix) + "</div>")
+    out.append(f'<form method="get" action="./"><input name="q" value="{escape(q)}">'
+               f' <button type="submit">Buscar</button></form>')
+
+    if not visibles:
+        out.append('<p class="r">No hay libros.</p>')
+    for g in visibles:
+        botones = []
+        for f in g["formatos"]:
+            fila = por_id.get(f["id"], {})
+            tam = _human_size(sizes.get(_blob_path(fila.get("uri_gcs") or "")))
+            etiqueta = f["extension"].upper() + (f" &middot; {tam}" if tam else "")
+            botones.append(f'<a href="d/{escape(f["id"])}">Descargar {etiqueta}</a>')
+        out.append(
+            f'<div class="r"><div class="t">{escape(g.get("nuevo_titulo") or "")}</div>'
+            f'<div class="a">{escape(g.get("autor") or "")}</div>'
+            f'<div class="f">{"".join(botones)}</div></div>'
+        )
+
+    nav = []
+    if page > 1:
+        nav.append(f'<a href="{escape(_qs(l=letra, q=q, p=page - 1))}">&laquo; Anterior</a>')
+    nav.append(f"<span>{page} / {pages}</span>")
+    if page < pages:
+        nav.append(f'<a href="{escape(_qs(l=letra, q=q, p=page + 1))}">Siguiente &raquo;</a>')
+    out.append('<div class="nav">' + "".join(nav) + "</div>")
+    return PAGE.format(body="\n".join(out))
+
+
+# --- Rutas -----------------------------------------------------------------
 
 @app.get("/robots.txt")
 def robots() -> Response:
@@ -207,35 +339,23 @@ def robots() -> Response:
 
 
 @app.get("/k/{token}/")
-def fase0(token: str, request: Request) -> Response:
+def lista(token: str, request: Request) -> Response:
     if not _token_ok(token):
         return _not_found()
-    libro = _test_book()
-    if libro is None:
-        body = "<h1>Prueba Kobo</h1><p>No hay un EPUB de prueba disponible (revisa KOBO_TEST_BOOK_ID).</p>"
-    else:
-        titulo = escape(libro.get("nuevo_titulo") or "")
-        autor = escape(libro.get("autor") or "")
-        bid = escape(libro["id"])
-        body = (
-            "<h1>Prueba Kobo (Fase 0)</h1>"
-            f"<p><b>{titulo}</b><br>{autor}</p>"
-            f'<a class="b" href="d/{bid}">A. Descargar (directo desde Google)</a>'
-            f'<a class="b" href="p/{bid}">B. Descargar (a través del servidor)</a>'
-            f"<p><small>Navegador: {escape(request.headers.get('user-agent', '?'))}</small></p>"
-        )
-    return HTMLResponse(PAGE.format(body=body))
+    params = request.query_params
+    q = (params.get("q") or "").strip()[:100]
+    letra = (params.get("l") or "").strip().upper()[:1]
+    return HTMLResponse(render_lista(_obras(q), letra, q, _parse_page(params.get("p"))))
 
 
 @app.get("/k/{token}/d/{book_id}")
-def descargar_firmado(token: str, book_id: str) -> Response:
+def descargar(token: str, book_id: str) -> Response:
     if not _token_ok(token):
         return _not_found()
     libro = _libro_descargable(book_id)
     if libro is None:
         return _not_found()
-    settings = get_settings()
-    blob = get_storage_client().bucket(settings.gcs_bucket).blob(_blob_path(libro["uri_gcs"]))
+    blob = get_storage_client().bucket(get_settings().gcs_bucket).blob(_blob_path(libro["uri_gcs"]))
     url = blob.generate_signed_url(
         version="v4",
         expiration=timedelta(minutes=get_kobo_settings().kobo_signed_url_minutes),
@@ -244,23 +364,3 @@ def descargar_firmado(token: str, book_id: str) -> Response:
         response_type=CONTENT_TYPES[_extension(libro)],
     )
     return RedirectResponse(url, status_code=302)
-
-
-@app.get("/k/{token}/p/{book_id}")
-def descargar_proxy(token: str, book_id: str) -> Response:
-    """Plan B si el Kobo no logra descargar desde storage.googleapis.com (certificados, URL larga...)."""
-    if not _token_ok(token):
-        return _not_found()
-    libro = _libro_descargable(book_id)
-    if libro is None:
-        return _not_found()
-    settings = get_settings()
-    blob = get_storage_client().bucket(settings.gcs_bucket).get_blob(_blob_path(libro["uri_gcs"]))
-    if blob is None:
-        return _not_found()
-    headers = {"Content-Disposition": f'attachment; filename="{ascii_filename(libro)}"'}
-    if blob.size is not None:
-        headers["Content-Length"] = str(blob.size)
-    return StreamingResponse(
-        stream_blob(libro["uri_gcs"]), media_type=CONTENT_TYPES[_extension(libro)], headers=headers,
-    )

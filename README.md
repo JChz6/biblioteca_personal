@@ -48,7 +48,7 @@ Las pruebas usan SQLite y archivos temporales; simulan las llamadas de publicaci
 
 ## Arquitectura
 
-Ver `CLAUDE.md` para el detalle de módulos. Resumen: FastAPI + Jinja2, SQLite (usuarios/allowlist + cola de aprobación) y BigQuery (catálogo publicado, única fuente de verdad de los libros ya aprobados). Los archivos viven solo en Google Cloud Storage — nunca se exponen URLs de GCS al cliente, todas las descargas pasan por la app (`/descargar/{id}`) en streaming.
+Ver `CLAUDE.md` para el detalle de módulos. Resumen: FastAPI + Jinja2, SQLite (usuarios/allowlist + cola de aprobación) y BigQuery (catálogo publicado, única fuente de verdad de los libros ya aprobados). Los archivos viven solo en Google Cloud Storage — la app principal nunca expone URLs de GCS: sus descargas pasan por `/descargar/{id}` en streaming. La excepción es el servicio Kobo (ver abajo), que redirige a URLs firmadas de corta duración; el bucket sigue privado.
 
 ## Despliegue en el homelab (Docker + Cloudflare Tunnel)
 
@@ -78,6 +78,31 @@ El servicio `app` no publica ningún puerto al host — solo `cloudflared` lo al
 - `https://biblioteca.tudominio.com` carga el login desde una red distinta a la del homelab (ej. datos móviles) — confirma que no depende de Tailscale/VPN ni de puertos abiertos en el router.
 - Login con Google funciona y el catálogo muestra los libros reales.
 - Agregar un amigo desde `/panel`, pedirle que suba un libro, aprobarlo, confirmar que aparece en el catálogo.
+
+## Acceso desde el Kobo (`kobo.` + NickelMenu)
+
+Servicio aparte de solo lectura (`app/kobo/main.py`, contenedor `kobo` en `docker-compose.yml`), pensado para el navegador del Kobo: HTML sin JavaScript ni imágenes, 20 obras por página, más recientes primero (igual que "Recientes" en la web), índice alfabético por título y búsqueda sin acentos. Incluye libros privados. Formatos listados: EPUB, KEPUB, PDF, CBZ, CBR, MOBI, TXT y RTF; el resto se oculta.
+
+- `GET /k/<KOBO_TOKEN>/` → lista (`?p=2`, `?l=A`, `?q=texto`).
+- `GET /k/<KOBO_TOKEN>/d/<id>` → 302 a una URL firmada V4 de GCS (`KOBO_SIGNED_URL_MINUTES`, 15 por defecto), con nombre de archivo ASCII y tipo forzados.
+- Todo lo demás → `404 Not Found` genérico. Solo GET/HEAD. 20 respuestas 404 en 10 minutos desde una IP la bloquean (429). El token se enmascara en los logs.
+
+**Despliegue:** `KOBO_TOKEN` en `.env` (`python3 -c "import secrets; print(secrets.token_urlsafe(32))"`, mínimo 43 caracteres) y `docker compose up -d --build kobo`. En el túnel de Cloudflare, ruta `kobo.<dominio>` → `http://biblioteca_personal-kobo-1:8000`. En Cloudflare: Browser Integrity Check desactivado para `kobo.` (el Kobo no resuelve retos JS), TLS mínimo 1.2 y una regla de rate limiting para ese hostname.
+
+**NickelMenu** (`.adds/nm/config` en el Kobo, añadir al final sin tocar el resto):
+```
+menu_item :main :Mis libros :nickel_browser :modal:https://kobo.<dominio>/k/<KOBO_TOKEN>/
+```
+
+**Rotar el token:** nuevo valor en `KOBO_TOKEN`, `docker compose up -d kobo` (no reinicia `app`), y cambiar el token en esa misma línea del Kobo por USB.
+
+**Si algo falla en el Kobo:**
+- Error de certificado / no conecta → TLS mínimo o CA del certificado de Cloudflare.
+- Pantalla en blanco o "verificando el navegador" → reto de Cloudflare (Browser Integrity Check, Bot Fight Mode).
+- `Not Found` → token distinto entre `.env` y la línea de NickelMenu.
+- `Too Many Requests` → la IP quedó bloqueada; esperar 10 minutos o reiniciar `kobo`.
+- Descarga falla tras dejar la página abierta mucho rato → no debería pasar: la URL se firma al tocar el botón.
+- El libro no aparece → salir del navegador o sincronizar.
 
 ## Scripts heredados
 
